@@ -8,7 +8,7 @@ runs on Next.js + Supabase's free tiers.
 ## Stack
 
 - **Next.js 16** (App Router) + TypeScript + Tailwind CSS
-- **Supabase** — Postgres database + email/password auth (free tier)
+- **Supabase** — Postgres database + email/password auth + storage (free tier)
 - **Vercel** — hosting (free tier)
 
 ## 1. Create a free Supabase project
@@ -16,16 +16,12 @@ runs on Next.js + Supabase's free tiers.
 1. Go to [supabase.com](https://supabase.com) and create a new project (free tier).
 2. In the project dashboard, open **SQL Editor → New query**, paste the
    contents of [`supabase/schema.sql`](./supabase/schema.sql), and run it.
-   This creates the base table and locks it down with Row Level Security so
-   each user can only see their own rows.
-3. Open a **New query** again, paste the contents of
-   [`supabase/002_add_kinds.sql`](./supabase/002_add_kinds.sql), and run it.
-   This renames the table to `items` and adds support for courses and
-   roadmaps alongside opportunities. (Run both files in order — `schema.sql`
-   first, then `002_add_kinds.sql` — even on a brand-new project.)
-4. Go to **Settings → API Keys**. Copy the **Project URL** and the
+   This creates the `items` table (opportunities/courses/roadmaps), locks it
+   down with Row Level Security so each user can only see their own rows, and
+   sets up the `avatars` storage bucket for profile photos.
+3. Go to **Settings → API Keys**. Copy the **Project URL** and the
    **publishable key** (`sb_publishable_...`).
-5. By default Supabase requires email confirmation for new accounts. For
+4. By default Supabase requires email confirmation for new accounts. For
    quick local testing, you can turn this off under
    **Authentication → Providers → Email → Confirm email** (disable it) so you
    can sign up and log in immediately. If the app is going to be used by
@@ -61,6 +57,9 @@ Open [http://localhost:3000](http://localhost:3000). You'll be redirected to
 3. In the project's **Environment Variables** settings, add the same two
    variables from `.env.local`.
 4. Deploy. Vercel builds and redeploys automatically on every push.
+5. In Supabase, go to **Authentication → URL Configuration** and add your
+   Vercel domain to the allowed redirect URLs (needed for the password reset
+   email link to work in production).
 
 ## Features
 
@@ -72,9 +71,9 @@ Open [http://localhost:3000](http://localhost:3000). You'll be redirected to
 - Deadline tracking with overdue/due-soon highlighting
 - Tags, notes, free-text search, and status filtering
 - Active vs. Archive views per section so closed-out items don't clutter the list
-- Privacy/Terms placeholder pages (`/privacy`, `/terms`) — replace the text
-  before using this with people you don't know, it's boilerplate, not legal
-  advice
+- Profile: name, avatar photo, password change, and a CSV export of everything
+  you've saved
+- Light/dark theme toggle
 
 ## Project structure
 
@@ -82,20 +81,20 @@ Open [http://localhost:3000](http://localhost:3000). You'll be redirected to
   session-refreshing proxy)
 - `src/proxy.ts` — Next.js 16 "Proxy" (formerly `middleware.ts`) that
   refreshes the auth session and redirects signed-out users to `/login`
-  (except `/login`, `/privacy`, `/terms`, which are public)
+  (except `/login`, `/privacy`, `/terms`, `/auth/confirm`, which are public)
 - `src/lib/items.ts` — the `Kind` (opportunity/course/roadmap) config: status
   sets, labels, styles, routes
 - `src/app/items/actions.ts` — Server Actions for create/update/delete/
   status-change, shared across all three kinds, all scoped to the signed-in user
 - `src/components/ItemsList.tsx` / `ItemForm.tsx` — shared list and form UI,
   parameterized by kind
-- `supabase/schema.sql` + `supabase/002_add_kinds.sql` — database schema,
-  RLS policies, and the kind/status migration
+- `supabase/schema.sql` — full database schema, RLS policies, and storage setup
 
 ## Known limitations / not done yet
 
-- No marketing landing page yet — logged-out visitors land on `/login`
-  directly. A landing page design is in progress separately.
-- Privacy/Terms pages are placeholder text, not reviewed legal copy.
+- Item lists load without pagination — fine at normal scale, will need a
+  limit/offset once someone has hundreds of items.
+- No automated tests and no production error monitoring.
+- Mobile layout hasn't been checked on a real device yet.
 - No custom rate limiting on signup — currently relying on Supabase Auth's
   built-in defaults, which should be revisited if usage grows.
