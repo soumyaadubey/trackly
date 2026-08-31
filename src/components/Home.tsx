@@ -1,0 +1,154 @@
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import {
+  KIND_CONFIG,
+  KIND_ROUTE,
+  KINDS,
+  deadlineUrgency,
+  formatDeadline,
+  type Item,
+} from "@/lib/items";
+import { KIND_ICON } from "@/components/icons";
+
+const URGENCY_STYLE: Record<string, React.CSSProperties> = {
+  overdue: { color: "var(--overdue)", fontWeight: 700 },
+  soon: { color: "var(--due-soon)", fontWeight: 700 },
+  normal: { color: "var(--ink-muted)", fontWeight: 500 },
+  none: { color: "var(--ink-faintest)", fontWeight: 400 },
+};
+
+export default async function Home({ name }: { name: string }) {
+  const supabase = await createClient();
+
+  const [{ data: withDeadlines }, counts] = await Promise.all([
+    supabase
+      .from("items")
+      .select("*")
+      .not("deadline", "is", null)
+      .order("deadline", { ascending: true })
+      .limit(30)
+      .returns<Item[]>(),
+    Promise.all(
+      KINDS.map((kind) =>
+        supabase
+          .from("items")
+          .select("id", { count: "exact", head: true })
+          .eq("kind", kind)
+          .in("status", KIND_CONFIG[kind].activeStatuses),
+      ),
+    ),
+  ]);
+
+  const upcoming = (withDeadlines ?? [])
+    .filter((item) => KIND_CONFIG[item.kind].activeStatuses.includes(item.status))
+    .slice(0, 6);
+
+  return (
+    <div className="mx-auto w-full max-w-4xl px-7 py-8">
+      <h1 className="font-serif mb-6 text-[26px]" style={{ color: "var(--ink)" }}>
+        Welcome back,{" "}
+        <span className="relative inline-block font-serif italic" style={{ color: "var(--accent)" }}>
+          {name}
+          <svg
+            width="100%"
+            height="10"
+            viewBox="0 0 118 14"
+            preserveAspectRatio="none"
+            style={{ position: "absolute", left: 0, bottom: -8, color: "var(--accent)" }}
+            fill="none"
+          >
+            <path
+              d="M2 9C20 3 40 3 59 7C78 11 98 11 116 5"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </span>
+        .
+      </h1>
+
+      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {KINDS.map((kind, i) => {
+          const config = KIND_CONFIG[kind];
+          const count = counts[i].count ?? 0;
+          const Icon = KIND_ICON[kind];
+          return (
+            <Link
+              key={kind}
+              href={KIND_ROUTE[kind]}
+              className="block overflow-hidden rounded"
+              style={{ background: "var(--paper)", border: "1px solid var(--border)" }}
+            >
+              <div className="kind-icon-stripe" style={{ background: `var(--kind-${kind})` }} />
+              <div className="p-6">
+                <div className="mb-2.5 flex items-center gap-2" style={{ color: `var(--kind-${kind})` }}>
+                  <Icon size={17} />
+                  <span
+                    className="text-[11px] font-semibold uppercase"
+                    style={{ letterSpacing: "0.03em", color: "var(--ink-muted)" }}
+                  >
+                    {config.pluralLabel}
+                  </span>
+                </div>
+                <div className="font-serif text-[36px]" style={{ color: "var(--ink)" }}>
+                  {count}
+                </div>
+                <div className="mt-1 text-[13px]" style={{ color: "var(--ink-muted)" }}>
+                  active {config.pluralLabel.toLowerCase()}
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      <div className="rounded" style={{ background: "var(--paper)", border: "1px solid var(--border)" }}>
+        <div className="px-6.5 py-4.5" style={{ borderBottom: "1px solid var(--border-soft)" }}>
+          <h2 className="font-serif text-[17px]" style={{ color: "var(--ink)" }}>
+            Coming up
+          </h2>
+        </div>
+
+        {upcoming.length === 0 ? (
+          <div className="px-7 py-12 text-center">
+            <p className="text-[15px]" style={{ color: "var(--ink-muted)" }}>
+              Nothing with a deadline yet.
+            </p>
+          </div>
+        ) : (
+          <ul>
+            {upcoming.map((item) => {
+              const urgency = deadlineUrgency(item.deadline);
+              const Icon = KIND_ICON[item.kind];
+              return (
+                <li
+                  key={item.id}
+                  className="row-hover flex items-center gap-3.5 px-6.5 py-3.5"
+                  style={{ borderBottom: "1px solid var(--border-soft)" }}
+                >
+                  <Icon size={16} style={{ color: `var(--kind-${item.kind})`, flexShrink: 0 }} />
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/items/${item.id}/edit`}
+                      className="truncate text-[14px] font-medium hover:underline"
+                      style={{ color: "var(--ink)" }}
+                    >
+                      {item.title}
+                    </Link>
+                    <span className="ml-2 text-[11px]" style={{ color: "var(--ink-faint)" }}>
+                      {KIND_CONFIG[item.kind].label}
+                    </span>
+                  </div>
+                  <div className="shrink-0 text-[13px]" style={URGENCY_STYLE[urgency]}>
+                    {formatDeadline(item.deadline!, urgency)}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
