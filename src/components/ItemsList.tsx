@@ -196,7 +196,7 @@ export default async function ItemsList({ kind, searchParams }: Props) {
               return (
                 <li
                   key={item.id}
-                  className="row-hover grid grid-cols-[1fr_auto_auto_auto] items-center gap-4.5 px-6.5 py-4.5"
+                  className="row-hover flex flex-col gap-3 px-6.5 py-4.5 sm:grid sm:grid-cols-[1fr_auto_auto_auto] sm:items-center sm:gap-4.5"
                   style={{ borderBottom: "1px solid var(--border-soft)" }}
                 >
                   <div className="min-w-0">
@@ -228,23 +228,25 @@ export default async function ItemsList({ kind, searchParams }: Props) {
                     )}
                   </div>
 
-                  <StatusSelect id={item.id} kind={kind} status={item.status} />
+                  <div className="flex flex-wrap items-center justify-between gap-3 sm:contents">
+                    <StatusSelect id={item.id} kind={kind} status={item.status} />
 
-                  <div className="w-[110px] text-right">
-                    {item.deadline ? (
-                      <DeadlineBadge deadline={item.deadline} showDate />
-                    ) : (
-                      <span className="text-[13px]" style={{ color: "var(--ink-faintest)" }}>
-                        No deadline
-                      </span>
-                    )}
-                  </div>
+                    <div className="sm:w-[110px] sm:text-right">
+                      {item.deadline ? (
+                        <DeadlineBadge deadline={item.deadline} showDate />
+                      ) : (
+                        <span className="text-[13px]" style={{ color: "var(--ink-faintest)" }}>
+                          No deadline
+                        </span>
+                      )}
+                    </div>
 
-                  <div className="flex items-center gap-1.5">
-                    <Link href={`/items/${item.id}/edit`} className="row-action">
-                      Edit
-                    </Link>
-                    <DeleteButton id={item.id} title={item.title} />
+                    <div className="flex items-center gap-1.5">
+                      <Link href={`/items/${item.id}/edit`} className="row-action">
+                        Edit
+                      </Link>
+                      <DeleteButton id={item.id} title={item.title} />
+                    </div>
                   </div>
                 </li>
               );
