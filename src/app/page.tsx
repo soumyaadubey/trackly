@@ -21,7 +21,7 @@ export default async function RootPage() {
     <div className="flex flex-1 flex-col" style={{ background: "var(--panel)" }}>
       <header className="mx-auto flex w-full max-w-4xl items-center justify-between px-7 py-5">
         <div className="flex items-center gap-2 font-serif text-[20px]" style={{ color: "var(--ink)" }}>
-          <Logo size={17} />
+          <Logo size={27} />
           Trackly
         </div>
         <div className="flex items-center gap-4.5">

@@ -38,7 +38,7 @@ export default function LoginForm({ initialError }: { initialError?: string }) {
     <div className="flex flex-1 flex-col" style={{ background: "var(--panel)" }}>
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-7 py-5">
         <Link href="/" className="flex items-center gap-2 font-serif text-[19px]" style={{ color: "var(--ink)" }}>
-          <Logo size={16} />
+          <Logo size={26} />
           Trackly
         </Link>
         <ThemeToggle />

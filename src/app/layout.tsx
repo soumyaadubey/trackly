@@ -49,7 +49,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-3 px-7 py-4">
               <div className="flex items-center gap-7">
                 <Link href="/" className="flex items-center gap-2 font-serif text-[19px] leading-none" style={{ color: "var(--ink)" }}>
-                  <Logo size={16} />
+                  <Logo size={26} />
                   Trackly
                 </Link>
                 <NavLinks />
