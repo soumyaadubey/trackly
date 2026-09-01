@@ -8,7 +8,7 @@ export default function NavLinks() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex items-center gap-1.5">
+    <nav className="flex flex-wrap items-center gap-1.5">
       {KINDS.map((kind) => {
         const href = KIND_ROUTE[kind];
         const active = pathname.startsWith(href);
