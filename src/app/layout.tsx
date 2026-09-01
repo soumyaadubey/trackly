@@ -46,22 +46,29 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col" suppressHydrationWarning style={{ background: "var(--page)" }}>
         {user && (
           <header style={{ background: "var(--panel)", borderBottom: "1px solid var(--border)" }}>
-            <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-3 px-7 py-4">
-              <div className="flex items-center gap-7">
-                <Link href="/" className="flex items-center gap-2 font-serif text-[19px] leading-none" style={{ color: "var(--ink)" }}>
-                  <Logo size={26} />
-                  Trackly
-                </Link>
-                <NavLinks />
+            <div className="mx-auto w-full max-w-4xl px-7 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-7">
+                  <Link href="/" className="flex items-center gap-2 font-serif text-[19px] leading-none" style={{ color: "var(--ink)" }}>
+                    <Logo size={26} />
+                    Trackly
+                  </Link>
+                  <div className="hidden sm:block">
+                    <NavLinks />
+                  </div>
+                </div>
+                <div className="flex items-center gap-3.5">
+                  <ThemeToggle />
+                  <AccountMenu
+                    email={user.email ?? ""}
+                    firstName={(user.user_metadata?.first_name as string) ?? ""}
+                    lastName={(user.user_metadata?.last_name as string) ?? ""}
+                    avatarUrl={(user.user_metadata?.avatar_url as string) ?? null}
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-3.5">
-                <ThemeToggle />
-                <AccountMenu
-                  email={user.email ?? ""}
-                  firstName={(user.user_metadata?.first_name as string) ?? ""}
-                  lastName={(user.user_metadata?.last_name as string) ?? ""}
-                  avatarUrl={(user.user_metadata?.avatar_url as string) ?? null}
-                />
+              <div className="mt-3 sm:hidden">
+                <NavLinks />
               </div>
             </div>
           </header>
