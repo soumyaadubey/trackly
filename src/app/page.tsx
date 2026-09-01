@@ -19,12 +19,12 @@ export default async function RootPage() {
 
   return (
     <div className="flex flex-1 flex-col" style={{ background: "var(--panel)" }}>
-      <header className="mx-auto flex w-full max-w-4xl items-center justify-between px-7 py-5">
+      <header className="mx-auto flex w-full max-w-4xl items-center justify-between px-4 py-5 sm:px-7">
         <div className="flex items-center gap-2 font-serif text-[20px]" style={{ color: "var(--ink)" }}>
           <Logo size={27} />
           Trackly
         </div>
-        <div className="flex items-center gap-4.5">
+        <div className="flex items-center gap-2.5 sm:gap-4.5">
           <ThemeToggle />
           <Link href="/login" className="text-sm font-medium" style={{ color: "var(--ink-muted)" }}>
             Log in
@@ -35,15 +35,18 @@ export default async function RootPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-4xl flex-1 px-7 pb-16">
-        <div className="ruled mb-5 rounded" style={{ border: "1px solid var(--border)", padding: "72px 56px 60px" }}>
+      <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-16 sm:px-7">
+        <div
+          className="ruled mb-5 rounded px-6 py-10 sm:px-14"
+          style={{ border: "1px solid var(--border)", paddingTop: "72px", paddingBottom: "60px" }}
+        >
           <h1
-            className="font-serif mb-9 max-w-2xl text-[50px] font-normal leading-[1.15]"
+            className="font-serif mb-9 max-w-2xl text-[32px] font-normal leading-[1.15] sm:text-[50px]"
             style={{ color: "var(--ink)", letterSpacing: "-0.015em" }}
           >
             Every application you meant to finish, on one page.
           </h1>
-          <p className="mb-9 max-w-xl text-lg leading-9" style={{ color: "var(--ink-muted)" }}>
+          <p className="mb-9 max-w-xl text-base leading-8 sm:text-lg sm:leading-9" style={{ color: "var(--ink-muted)" }}>
             Hackathon applications, courses you meant to start, roadmaps you
             bookmarked and never opened again — this is the one page that
             remembers all of it, so your browser tabs don&apos;t have to.
@@ -101,7 +104,7 @@ export default async function RootPage() {
       </main>
 
       <footer
-        className="mx-auto flex w-full max-w-4xl items-center justify-between px-7 py-5 text-[13px]"
+        className="mx-auto flex w-full max-w-4xl items-center justify-between px-4 py-5 text-[13px] sm:px-7"
         style={{ color: "var(--ink-muted)", borderTop: "1px solid var(--border)" }}
       >
         <span className="font-serif italic">Trackly</span>

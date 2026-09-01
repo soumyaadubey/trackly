@@ -137,6 +137,7 @@ body {
   color: var(--accent-fg);
   padding: 13px 24px;
   border-radius: 22px;
+  white-space: nowrap;
   transition: background-color 140ms ease, transform 100ms ease;
 }
 .pill-btn-primary:hover { background: var(--accent-hover); }
@@ -157,6 +158,7 @@ body {
   color: var(--ink);
   padding: 12px 20px;
   border-radius: 20px;
+  white-space: nowrap;
   transition: background-color 140ms ease;
 }
 .pill-btn-secondary:hover { background: var(--paper-line); }
