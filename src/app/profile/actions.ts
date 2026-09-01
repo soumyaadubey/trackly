@@ -59,6 +59,17 @@ export async function updateAvatar(
   const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
   const path = `${user.id}/avatar.${ext}`;
 
+  // Switching file types (e.g. .png -> .jpg) would otherwise leave the old
+  // extension's file behind in storage forever, since upsert only replaces
+  // an exact path match. Clear out any other avatar.* file first.
+  const { data: existingFiles } = await supabase.storage.from("avatars").list(user.id);
+  const staleFiles = (existingFiles ?? [])
+    .filter((f) => f.name !== `avatar.${ext}`)
+    .map((f) => `${user.id}/${f.name}`);
+  if (staleFiles.length > 0) {
+    await supabase.storage.from("avatars").remove(staleFiles);
+  }
+
   const { error: uploadError } = await supabase.storage
     .from("avatars")
     .upload(path, file, { upsert: true, contentType: file.type });

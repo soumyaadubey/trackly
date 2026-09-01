@@ -1,30 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import {
-  KIND_CONFIG,
-  KIND_ROUTE,
-  deadlineUrgency,
-  formatDeadline,
-  type Item,
-  type Kind,
-} from "@/lib/items";
+import { ITEMS_PER_PAGE, KIND_CONFIG, KIND_ROUTE, type Item, type Kind } from "@/lib/items";
 import StatusSelect from "@/components/StatusSelect";
 import DeleteButton from "@/components/DeleteButton";
+import DeadlineBadge from "@/components/DeadlineBadge";
 import { KIND_ICON } from "@/components/icons";
-
-const URGENCY_CLASS: Record<string, string> = {
-  overdue: "nb-overdue",
-  soon: "",
-  normal: "",
-  none: "",
-};
-
-const URGENCY_STYLE: Record<string, React.CSSProperties> = {
-  overdue: { color: "var(--overdue)", fontWeight: 700 },
-  soon: { color: "var(--due-soon)", fontWeight: 700 },
-  normal: { color: "var(--ink-muted)", fontWeight: 500 },
-  none: { color: "var(--ink-faintest)", fontWeight: 400 },
-};
 
 type Props = {
   kind: Kind;
@@ -43,6 +23,8 @@ export default async function ItemsList({ kind, searchParams }: Props) {
       ? rawStatus
       : null;
   const q = typeof searchParams.q === "string" ? searchParams.q.trim() : "";
+  const rawPage = typeof searchParams.page === "string" ? parseInt(searchParams.page, 10) : 1;
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
 
   const supabase = await createClient();
 
@@ -51,31 +33,52 @@ export default async function ItemsList({ kind, searchParams }: Props) {
 
   let query = supabase
     .from("items")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("kind", kind)
     .in("status", statusesToQuery)
     .order("deadline", { ascending: true, nullsFirst: false });
 
   if (q) {
-    query = query.or(`title.ilike.%${q}%,notes.ilike.%${q}%`);
+    // Quote the value so commas/parens/colons in the search text aren't
+    // parsed as PostgREST filter syntax (e.g. a comma splitting into an
+    // unintended extra clause). Backslashes and quotes inside must be
+    // escaped since the quoted value uses backslash-escaping itself.
+    const escaped = q.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    query = query.or(`title.ilike."%${escaped}%",notes.ilike."%${escaped}%"`);
   }
 
-  const [{ data: items, error }, { count: activeCount }, { count: archiveCount }] =
-    await Promise.all([
-      query.returns<Item[]>(),
-      supabase
-        .from("items")
-        .select("id", { count: "exact", head: true })
-        .eq("kind", kind)
-        .in("status", config.activeStatuses),
-      supabase
-        .from("items")
-        .select("id", { count: "exact", head: true })
-        .eq("kind", kind)
-        .in("status", config.archiveStatuses),
-    ]);
+  query = query.range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1);
+
+  const [
+    { data: items, error, count: totalCount },
+    { count: activeCount },
+    { count: archiveCount },
+  ] = await Promise.all([
+    query.returns<Item[]>(),
+    supabase
+      .from("items")
+      .select("id", { count: "exact", head: true })
+      .eq("kind", kind)
+      .in("status", config.activeStatuses),
+    supabase
+      .from("items")
+      .select("id", { count: "exact", head: true })
+      .eq("kind", kind)
+      .in("status", config.archiveStatuses),
+  ]);
 
   const isFiltered = Boolean(q || statusFilter);
+  const totalPages = Math.max(1, Math.ceil((totalCount ?? 0) / ITEMS_PER_PAGE));
+  const outOfRange = (totalCount ?? 0) > 0 && (items?.length ?? 0) === 0;
+
+  function pageHref(targetPage: number) {
+    const params = new URLSearchParams();
+    params.set("view", view);
+    if (statusFilter) params.set("status", statusFilter);
+    if (q) params.set("q", q);
+    if (targetPage > 1) params.set("page", String(targetPage));
+    return `${route}?${params.toString()}`;
+  }
 
   return (
     <div className="mx-auto w-full max-w-4xl px-7 py-8">
@@ -143,7 +146,21 @@ export default async function ItemsList({ kind, searchParams }: Props) {
           </div>
         )}
 
-        {!error && items && items.length === 0 && !isFiltered && (
+        {!error && items && items.length === 0 && outOfRange && (
+          <div className="px-7 py-16 text-center">
+            <h2 className="font-serif mb-3 text-[20px]" style={{ color: "var(--ink)" }}>
+              Nothing on page {page}.
+            </h2>
+            <p className="mx-auto mb-6 max-w-sm text-sm leading-relaxed" style={{ color: "var(--ink-muted)" }}>
+              Only {totalPages} page{totalPages === 1 ? "" : "s"} match right now.
+            </p>
+            <Link href={pageHref(1)} className="pill-btn-secondary inline-block text-[13px]">
+              Back to page 1
+            </Link>
+          </div>
+        )}
+
+        {!error && items && items.length === 0 && !outOfRange && !isFiltered && (
           <div className="px-7 py-16 text-center">
             <Icon size={34} style={{ color: `var(--kind-${kind})`, opacity: 0.35, margin: "0 auto 18px" }} />
             <h2 className="font-serif mb-4 text-[26px]" style={{ color: "var(--ink)" }}>
@@ -159,7 +176,7 @@ export default async function ItemsList({ kind, searchParams }: Props) {
           </div>
         )}
 
-        {!error && items && items.length === 0 && isFiltered && (
+        {!error && items && items.length === 0 && !outOfRange && isFiltered && (
           <div className="px-7 py-16 text-center">
             <h2 className="font-serif mb-3 text-[20px]" style={{ color: "var(--ink)" }}>
               Nothing matches that combination.
@@ -176,7 +193,6 @@ export default async function ItemsList({ kind, searchParams }: Props) {
         {items && items.length > 0 && (
           <ul>
             {items.map((item) => {
-              const urgency = deadlineUrgency(item.deadline);
               return (
                 <li
                   key={item.id}
@@ -216,14 +232,7 @@ export default async function ItemsList({ kind, searchParams }: Props) {
 
                   <div className="w-[110px] text-right">
                     {item.deadline ? (
-                      <>
-                        <div className={URGENCY_CLASS[urgency]} style={{ ...URGENCY_STYLE[urgency], fontSize: 13 }}>
-                          {formatDeadline(item.deadline, urgency)}
-                        </div>
-                        <div className="mt-1 text-[11px]" style={{ color: "var(--ink-faintest)" }}>
-                          {item.deadline}
-                        </div>
-                      </>
+                      <DeadlineBadge deadline={item.deadline} showDate />
                     ) : (
                       <span className="text-[13px]" style={{ color: "var(--ink-faintest)" }}>
                         No deadline
@@ -241,6 +250,31 @@ export default async function ItemsList({ kind, searchParams }: Props) {
               );
             })}
           </ul>
+        )}
+
+        {items && items.length > 0 && totalPages > 1 && (
+          <div
+            className="flex items-center justify-between px-6.5 py-3.5"
+            style={{ borderTop: "1px solid var(--border-soft)" }}
+          >
+            {page > 1 ? (
+              <Link href={pageHref(page - 1)} className="pill-btn-secondary text-[13px]">
+                ← Previous
+              </Link>
+            ) : (
+              <span />
+            )}
+            <span className="text-[12px]" style={{ color: "var(--ink-muted)" }}>
+              Page {page} of {totalPages}
+            </span>
+            {page < totalPages ? (
+              <Link href={pageHref(page + 1)} className="pill-btn-secondary text-[13px]">
+                Next →
+              </Link>
+            ) : (
+              <span />
+            )}
+          </div>
         )}
       </div>
     </div>

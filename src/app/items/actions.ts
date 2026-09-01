@@ -3,21 +3,14 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { isKind, isStatusForKind, KIND_ROUTE, type Kind } from "@/lib/items";
-
-function parseTags(raw: FormDataEntryValue | null): string[] {
-  return String(raw ?? "")
-    .split(",")
-    .map((t) => t.trim())
-    .filter(Boolean);
-}
-
-function normalizeUrl(raw: string): string {
-  const trimmed = raw.trim();
-  if (!trimmed) return trimmed;
-  if (!/^https?:\/\//i.test(trimmed)) return `https://${trimmed}`;
-  return trimmed;
-}
+import {
+  isKind,
+  isStatusForKind,
+  normalizeUrl,
+  parseTags,
+  KIND_ROUTE,
+  type Kind,
+} from "@/lib/items";
 
 export type SaveState = { error: string | null };
 
@@ -120,7 +113,7 @@ export async function updateItem(
   redirect(KIND_ROUTE[existing.kind]);
 }
 
-export async function updateStatus(id: string, status: string) {
+export async function updateStatus(id: string, status: string): Promise<SaveState> {
   const { supabase, user } = await requireUser();
 
   const { data: existing } = await supabase
@@ -130,18 +123,23 @@ export async function updateStatus(id: string, status: string) {
     .eq("user_id", user.id)
     .single<{ kind: Kind }>();
 
-  if (!existing || !isStatusForKind(existing.kind, status)) return;
+  if (!existing || !isStatusForKind(existing.kind, status)) {
+    return { error: "Invalid status." };
+  }
 
-  await supabase
+  const { error } = await supabase
     .from("items")
     .update({ status })
     .eq("id", id)
     .eq("user_id", user.id);
 
+  if (error) return { error: error.message };
+
   revalidatePath(KIND_ROUTE[existing.kind]);
+  return { error: null };
 }
 
-export async function deleteItem(id: string) {
+export async function deleteItem(id: string): Promise<SaveState> {
   const { supabase, user } = await requireUser();
 
   const { data: existing } = await supabase
@@ -151,11 +149,18 @@ export async function deleteItem(id: string) {
     .eq("user_id", user.id)
     .single<{ kind: Kind }>();
 
-  await supabase
+  if (!existing) {
+    return { error: "Item not found." };
+  }
+
+  const { error } = await supabase
     .from("items")
     .delete()
     .eq("id", id)
     .eq("user_id", user.id);
 
-  if (existing) revalidatePath(KIND_ROUTE[existing.kind]);
+  if (error) return { error: error.message };
+
+  revalidatePath(KIND_ROUTE[existing.kind]);
+  return { error: null };
 }

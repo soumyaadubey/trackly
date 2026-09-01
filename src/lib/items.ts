@@ -75,6 +75,8 @@ export const KIND_CONFIG: Record<Kind, KindConfig> = {
   },
 };
 
+export const ITEMS_PER_PAGE = 25;
+
 export const KIND_ROUTE: Record<Kind, string> = {
   opportunity: "/opportunities",
   course: "/courses",
@@ -101,6 +103,20 @@ export type Item = {
 
 export function isStatusForKind(kind: Kind, value: string): boolean {
   return KIND_CONFIG[kind].statuses.includes(value);
+}
+
+export function parseTags(raw: FormDataEntryValue | null): string[] {
+  return String(raw ?? "")
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
+export function normalizeUrl(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return trimmed;
+  if (!/^https?:\/\//i.test(trimmed)) return `https://${trimmed}`;
+  return trimmed;
 }
 
 export type Urgency = "overdue" | "soon" | "normal" | "none";

@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { lookup } from "node:dns/promises";
+import { lookup as dnsLookupCallback } from "node:dns";
 import { isIP } from "node:net";
+import { Agent, fetch as undiciFetch } from "undici";
 
 function isPrivateIp(ip: string): boolean {
   const family = isIP(ip);
@@ -31,6 +33,35 @@ function isPrivateIp(ip: string): boolean {
   return true; // couldn't classify it — refuse rather than guess
 }
 
+// Re-validates the destination inside the actual connection's own DNS
+// resolution, rather than relying only on the earlier one-off lookup below.
+// Checking once and then calling fetch() separately leaves a DNS-rebinding
+// gap: an attacker's nameserver can return a public IP for the pre-check
+// and a private one (e.g. cloud metadata) moments later for the real
+// connection. Pinning the check to the resolver that actually opens the
+// socket closes that gap.
+function createSsrfSafeDispatcher() {
+  return new Agent({
+    connect: {
+      lookup(hostname, options, callback) {
+        dnsLookupCallback(hostname, options, (err, address, family) => {
+          if (err) {
+            callback(err, "", 0);
+            return;
+          }
+          const resolved = typeof address === "string" ? address : address[0]?.address;
+          const resolvedFamily = typeof address === "string" ? family : address[0]?.family;
+          if (!resolved || isPrivateIp(resolved)) {
+            callback(new Error("Refused: resolved to a disallowed address"), "", 0);
+            return;
+          }
+          callback(null, resolved, resolvedFamily ?? 4);
+        });
+      },
+    },
+  });
+}
+
 export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get("url");
   if (!url) {
@@ -48,6 +79,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Fast pre-check purely for a clearer error message; the dispatcher
+    // below is the actual security boundary (see createSsrfSafeDispatcher).
     const { address } = await lookup(target.hostname);
     if (isPrivateIp(address)) {
       return NextResponse.json({ error: "That address can't be fetched." }, { status: 400 });
@@ -57,10 +90,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const res = await fetch(target, {
+    const res = await undiciFetch(target, {
       signal: AbortSignal.timeout(5000),
       headers: { "User-Agent": "Mozilla/5.0 (opportunity-tracker)" },
       redirect: "manual", // don't blindly follow a redirect into a private address
+      dispatcher: createSsrfSafeDispatcher(),
     });
     if (res.type === "opaqueredirect" || (res.status >= 300 && res.status < 400)) {
       return NextResponse.json({ title: null });

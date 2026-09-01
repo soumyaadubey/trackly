@@ -1,21 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import {
-  KIND_CONFIG,
-  KIND_ROUTE,
-  KINDS,
-  deadlineUrgency,
-  formatDeadline,
-  type Item,
-} from "@/lib/items";
+import { KIND_CONFIG, KIND_ROUTE, KINDS, type Item } from "@/lib/items";
+import DeadlineBadge from "@/components/DeadlineBadge";
 import { KIND_ICON } from "@/components/icons";
-
-const URGENCY_STYLE: Record<string, React.CSSProperties> = {
-  overdue: { color: "var(--overdue)", fontWeight: 700 },
-  soon: { color: "var(--due-soon)", fontWeight: 700 },
-  normal: { color: "var(--ink-muted)", fontWeight: 500 },
-  none: { color: "var(--ink-faintest)", fontWeight: 400 },
-};
 
 export default async function Home({ name }: { name: string }) {
   const supabase = await createClient();
@@ -119,7 +106,6 @@ export default async function Home({ name }: { name: string }) {
         ) : (
           <ul>
             {upcoming.map((item) => {
-              const urgency = deadlineUrgency(item.deadline);
               const Icon = KIND_ICON[item.kind];
               return (
                 <li
@@ -140,8 +126,8 @@ export default async function Home({ name }: { name: string }) {
                       {KIND_CONFIG[item.kind].label}
                     </span>
                   </div>
-                  <div className="shrink-0 text-[13px]" style={URGENCY_STYLE[urgency]}>
-                    {formatDeadline(item.deadline!, urgency)}
+                  <div className="shrink-0 text-[13px]">
+                    <DeadlineBadge deadline={item.deadline!} />
                   </div>
                 </li>
               );
