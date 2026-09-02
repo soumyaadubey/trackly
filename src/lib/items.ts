@@ -77,6 +77,17 @@ export const KIND_CONFIG: Record<Kind, KindConfig> = {
 
 export const ITEMS_PER_PAGE = 25;
 
+/**
+ * Field limits. These mirror the CHECK constraints in supabase/schema.sql —
+ * the database is the real boundary, these exist so the user finds out while
+ * typing rather than after a failed round-trip. Change them in both places.
+ */
+export const MAX_TITLE_LENGTH = 300;
+export const MAX_URL_LENGTH = 2048;
+export const MAX_NOTES_LENGTH = 10000;
+export const MAX_TAGS = 20;
+export const MAX_TAG_LENGTH = 50;
+
 export const KIND_ROUTE: Record<Kind, string> = {
   opportunity: "/opportunities",
   course: "/courses",
@@ -106,10 +117,77 @@ export function isStatusForKind(kind: Kind, value: string): boolean {
 }
 
 export function parseTags(raw: FormDataEntryValue | null): string[] {
+  const seen = new Set<string>();
   return String(raw ?? "")
     .split(",")
-    .map((t) => t.trim())
-    .filter(Boolean);
+    .map((t) => t.trim().slice(0, MAX_TAG_LENGTH))
+    .filter((t) => {
+      if (!t || seen.has(t)) return false;
+      seen.add(t);
+      return true;
+    })
+    .slice(0, MAX_TAGS);
+}
+
+export type ItemFields = {
+  title: string;
+  url: string;
+  status: string;
+  deadline: string | null;
+  notes: string | null;
+  tags: string[];
+};
+
+/**
+ * Read an item out of a submitted form and validate it.
+ *
+ * createItem and updateItem used to carry identical copies of this block, so a
+ * rule added to one could silently miss the other.
+ */
+export function parseItemForm(
+  formData: FormData,
+  kind: Kind,
+): { ok: true; fields: ItemFields } | { ok: false; error: string } {
+  const title = String(formData.get("title") ?? "").trim();
+  const url = normalizeUrl(String(formData.get("url") ?? ""));
+  const status = String(formData.get("status") ?? "saved");
+  const deadline = String(formData.get("deadline") ?? "").trim() || null;
+  const notes = String(formData.get("notes") ?? "").trim() || null;
+  const tags = parseTags(formData.get("tags"));
+
+  if (!title || !url) {
+    return { ok: false, error: "Title and URL are required." };
+  }
+  if (title.length > MAX_TITLE_LENGTH) {
+    return { ok: false, error: `Title must be under ${MAX_TITLE_LENGTH} characters.` };
+  }
+  if (url.length > MAX_URL_LENGTH) {
+    return { ok: false, error: "That link is too long." };
+  }
+  if (notes && notes.length > MAX_NOTES_LENGTH) {
+    return { ok: false, error: `Notes must be under ${MAX_NOTES_LENGTH} characters.` };
+  }
+  if (!isStatusForKind(kind, status)) {
+    return { ok: false, error: "Invalid status." };
+  }
+  if (deadline !== null && !isValidDate(deadline)) {
+    return { ok: false, error: "That deadline isn't a valid date." };
+  }
+
+  return { ok: true, fields: { title, url, status, deadline, notes, tags } };
+}
+
+/** A `<input type="date">` value: YYYY-MM-DD, and a date that actually exists. */
+export function isValidDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [y, m, d] = value.split("-").map(Number);
+  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const parsed = new Date(Date.UTC(y, m - 1, d));
+  return (
+    parsed.getUTCFullYear() === y &&
+    parsed.getUTCMonth() === m - 1 &&
+    parsed.getUTCDate() === d
+  );
 }
 
 export function normalizeUrl(raw: string): string {

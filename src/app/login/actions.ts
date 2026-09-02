@@ -1,11 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { getSiteOrigin } from "@/lib/site";
+import { reportError, userMessage } from "@/lib/errors";
 
 export type AuthState = { error: string | null; confirmSent?: boolean };
 export type ResetRequestState = { error: string | null; sent: boolean };
+
+const MIN_PASSWORD_LENGTH = 8;
 
 export async function login(
   _prevState: AuthState,
@@ -18,7 +21,10 @@ export async function login(
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return { error: error.message };
+    reportError("login", error);
+    // Deliberately uniform: a distinct "no such account" message would let an
+    // unauthenticated caller enumerate which addresses are registered.
+    return { error: "That email and password don't match an account." };
   }
 
   redirect("/");
@@ -31,15 +37,15 @@ export async function signup(
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
 
-  if (password.length < 6) {
-    return { error: "Password must be at least 6 characters." };
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` };
   }
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({ email, password });
 
   if (error) {
-    return { error: error.message };
+    return { error: userMessage("signup", error) };
   }
 
   if (!data.session) {
@@ -60,10 +66,11 @@ export async function requestPasswordReset(
     return { error: "Enter your email first.", sent: false };
   }
 
-  const headersList = await headers();
-  const host = headersList.get("x-forwarded-host") ?? headersList.get("host");
-  const protocol = headersList.get("x-forwarded-proto") ?? "http";
-  const origin = `${protocol}://${host}`;
+  // The origin comes from configuration, never from the request's Host or
+  // X-Forwarded-Host header. Building it from the header meant an attacker
+  // could request a reset for someone else's address, spoof the header, and
+  // have the emailed link — carrying a valid token — point at their own site.
+  const origin = await getSiteOrigin();
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -71,9 +78,11 @@ export async function requestPasswordReset(
   });
 
   if (error) {
-    return { error: error.message, sent: false };
+    reportError("requestPasswordReset", error);
   }
 
+  // Always report success. Telling the caller whether the address was found
+  // turns this form into an account-existence oracle.
   return { error: null, sent: true };
 }
 
