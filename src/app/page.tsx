@@ -38,7 +38,7 @@ export default async function RootPage() {
           <Link href="/login" className="text-sm font-medium" style={{ color: "var(--ink-muted)" }}>
             Log in
           </Link>
-          <Link href="/login" className="pill-btn-primary text-sm">
+          <Link href="/login?mode=signup" className="pill-btn-primary text-sm">
             Sign up
           </Link>
         </div>
@@ -61,7 +61,7 @@ export default async function RootPage() {
             remembers all of it, so your browser tabs don&apos;t have to.
           </p>
           <div className="flex items-center gap-4.5">
-            <Link href="/login" className="pill-btn-primary text-[15px]">
+            <Link href="/login?mode=signup" className="pill-btn-primary text-[15px]">
               Sign up
             </Link>
             <span className="font-serif text-sm italic" style={{ color: "var(--ink-faint)" }}>
@@ -107,7 +107,7 @@ export default async function RootPage() {
             Add the first one in about fifteen seconds.
           </div>
           <Link
-            href="/login"
+            href="/login?mode=signup"
             className="rounded-full px-6.5 py-3.5 text-[15px] font-medium"
             style={{ background: "var(--paper)", color: "var(--ink)" }}
           >

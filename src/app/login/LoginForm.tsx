@@ -15,8 +15,17 @@ import {
 const initialState: AuthState = { error: null };
 const initialResetState: ResetRequestState = { error: null, sent: false };
 
-export default function LoginForm({ initialError }: { initialError?: string }) {
-  const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
+type Mode = "login" | "signup" | "forgot";
+
+export default function LoginForm({
+  initialError,
+  initialMode = "login",
+}: {
+  initialError?: string;
+  /** Which tab to open on. "forgot" is only ever reached from inside the form. */
+  initialMode?: "login" | "signup";
+}) {
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [loginState, loginAction, loginPending] = useActionState(
     login,
     initialState,
