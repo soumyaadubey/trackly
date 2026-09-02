@@ -20,10 +20,13 @@ type Mode = "login" | "signup" | "forgot";
 export default function LoginForm({
   initialError,
   initialMode = "login",
+  next = "/",
 }: {
   initialError?: string;
   /** Which tab to open on. "forgot" is only ever reached from inside the form. */
   initialMode?: "login" | "signup";
+  /** Already validated by the page via safeNext; re-validated in the action. */
+  next?: string;
 }) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [loginState, loginAction, loginPending] = useActionState(
@@ -136,6 +139,9 @@ export default function LoginForm({
               )}
 
               <form action={action} className="space-y-5">
+                {/* Carries the destination through the sign-in so a deep link
+                    survives being bounced to /login. */}
+                <input type="hidden" name="next" value={next} />
                 <div>
                   <label htmlFor="email" className="field-label block">
                     Email

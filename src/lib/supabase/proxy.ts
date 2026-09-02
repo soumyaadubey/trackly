@@ -37,6 +37,16 @@ export async function updateSession(request: NextRequest) {
   if (!isLoggedIn && !isPublicPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    // Remember where they were headed. Cloning the URL kept the original query
+    // string, so a signed-out hit on /api/fetch-title?url=... arrived as
+    // /login?url=... — someone else's parameters loose on the login page. Clear
+    // it, then carry the destination in one parameter the login action reads
+    // back through safeNext().
+    const intended = pathname + request.nextUrl.search;
+    url.search = "";
+    if (intended !== "/" && !intended.startsWith("/api/")) {
+      url.searchParams.set("next", intended);
+    }
     return NextResponse.redirect(url);
   }
 

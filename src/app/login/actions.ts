@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteOrigin } from "@/lib/site";
+import { safeNext } from "@/lib/safe-next";
 import { reportError, userMessage } from "@/lib/errors";
 
 export type AuthState = { error: string | null; confirmSent?: boolean };
@@ -16,6 +17,9 @@ export async function login(
 ): Promise<AuthState> {
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
+  // Where they were headed before the proxy sent them here. Validated, because
+  // it arrives from a URL the user controls and ends up in a redirect.
+  const next = safeNext(formData.get("next") as string | null);
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -27,7 +31,7 @@ export async function login(
     return { error: "That email and password don't match an account." };
   }
 
-  redirect("/");
+  redirect(next);
 }
 
 export async function signup(
@@ -36,6 +40,7 @@ export async function signup(
 ): Promise<AuthState> {
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
+  const next = safeNext(formData.get("next") as string | null);
 
   if (password.length < MIN_PASSWORD_LENGTH) {
     return { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` };
@@ -53,7 +58,7 @@ export async function signup(
     return { error: null, confirmSent: true };
   }
 
-  redirect("/");
+  redirect(next);
 }
 
 export async function requestPasswordReset(
