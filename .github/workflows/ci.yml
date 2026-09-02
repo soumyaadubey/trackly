@@ -28,6 +28,13 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # PageProps and LayoutProps are generated into .next/types by Next, so on
+      # a clean checkout they do not exist yet and tsc fails with "Cannot find
+      # name 'PageProps'". A working tree that has been built before hides this;
+      # CI is the only place that starts from nothing.
+      - name: Generate route types
+        run: npx next typegen
+
       - name: Typecheck
         run: npx tsc --noEmit
 
