@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ItemForm from "@/components/ItemForm";
-import { updateItem } from "@/app/items/actions";
+import { updateItem } from "@/app/(app)/items/actions";
 import { KIND_CONFIG, type Item } from "@/lib/items";
 import { KIND_ICON } from "@/components/icons";
 

@@ -1,11 +1,5 @@
 import type { Metadata } from "next";
 import { Newsreader, Instrument_Sans } from "next/font/google";
-import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import ThemeToggle from "@/components/ThemeToggle";
-import AccountMenu from "@/components/AccountMenu";
-import NavLinks from "@/components/NavLinks";
-import Logo from "@/components/Logo";
 import "./globals.css";
 
 const newsreader = Newsreader({
@@ -26,14 +20,28 @@ export const metadata: Metadata = {
   description: "Track hackathon applications, courses, and roadmaps in one place.",
 };
 
-const THEME_INIT_SCRIPT = `try{if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}`;
+/**
+ * Runs before first paint.
+ *
+ * 1. Applies the saved theme, so a dark-mode user doesn't get a flash of the
+ *    light palette. `dark` is explicit; anything else follows the OS.
+ * 2. Records the viewer's UTC offset in a cookie, so the server can render
+ *    deadlines against the viewer's own "today" instead of UTC. Written on
+ *    every load rather than only when absent, so travel and DST transitions
+ *    are picked up. Not sensitive, and not used for anything but date maths.
+ */
+const INIT_SCRIPT = `try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}
+try{document.cookie='tzo='+(-new Date().getTimezoneOffset())+';path=/;max-age=31536000;samesite=lax'}catch(e){}`;
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+/**
+ * The root layout is deliberately session-free.
+ *
+ * It used to be `async` and call auth.getUser(), which opted every route in the
+ * app — the landing page, /privacy, /terms — into dynamic rendering and a
+ * Supabase round-trip. The signed-in chrome now lives in SiteHeader, rendered
+ * by the (app) route group and by the authenticated branch of the home page.
+ */
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
@@ -41,38 +49,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: INIT_SCRIPT }} />
       </head>
-      <body className="min-h-full flex flex-col" suppressHydrationWarning style={{ background: "var(--page)" }}>
-        {user && (
-          <header style={{ background: "var(--panel)", borderBottom: "1px solid var(--border)" }}>
-            <div className="mx-auto w-full max-w-4xl px-7 py-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-7">
-                  <Link href="/" className="flex items-center gap-2 font-serif text-[19px] leading-none" style={{ color: "var(--ink)" }}>
-                    <Logo size={26} />
-                    Trackly
-                  </Link>
-                  <div className="hidden sm:block">
-                    <NavLinks />
-                  </div>
-                </div>
-                <div className="flex items-center gap-3.5">
-                  <ThemeToggle />
-                  <AccountMenu
-                    email={user.email ?? ""}
-                    firstName={(user.user_metadata?.first_name as string) ?? ""}
-                    lastName={(user.user_metadata?.last_name as string) ?? ""}
-                    avatarUrl={(user.user_metadata?.avatar_url as string) ?? null}
-                  />
-                </div>
-              </div>
-              <div className="mt-3 sm:hidden">
-                <NavLinks />
-              </div>
-            </div>
-          </header>
-        )}
+      <body
+        className="min-h-full flex flex-col"
+        suppressHydrationWarning
+        style={{ background: "var(--page)" }}
+      >
         {children}
       </body>
     </html>

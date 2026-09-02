@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { KIND_CONFIG, type Kind } from "@/lib/items";
-import { updateStatus } from "@/app/items/actions";
+import { updateStatus } from "@/app/(app)/items/actions";
 
 export default function StatusSelect({
   id,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { deleteItem } from "@/app/items/actions";
+import { deleteItem } from "@/app/(app)/items/actions";
 
 export default function DeleteButton({ id, title }: { id: string; title: string }) {
   const [isPending, startTransition] = useTransition();

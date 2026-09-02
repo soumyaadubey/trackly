@@ -3,7 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import Link from "next/link";
 import { KIND_CONFIG, KIND_ROUTE, type Item, type Kind } from "@/lib/items";
-import type { SaveState } from "@/app/items/actions";
+import type { SaveState } from "@/app/(app)/items/actions";
 
 type Props = {
   kind: Kind;

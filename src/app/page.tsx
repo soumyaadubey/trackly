@@ -1,20 +1,29 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import ThemeToggle from "@/components/ThemeToggle";
 import Home from "@/components/Home";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 import Logo from "@/components/Logo";
 import { ClockIcon, LinkIcon } from "@/components/icons";
 
 export default async function RootPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (user) {
     const greetingName =
       (user.user_metadata?.first_name as string) || (user.email ?? "there").split("@")[0];
-    return <Home name={greetingName} />;
+    // This route serves two different pages. The signed-in one needs the app
+    // chrome that the (app) route group provides to everything else.
+    return (
+      <>
+        <SiteHeader />
+        <div className="flex-1">
+          <Home name={greetingName} />
+        </div>
+        <SiteFooter />
+      </>
+    );
   }
 
   return (
@@ -103,16 +112,7 @@ export default async function RootPage() {
         </div>
       </main>
 
-      <footer
-        className="mx-auto flex w-full max-w-4xl items-center justify-between px-4 py-5 text-[13px] sm:px-7"
-        style={{ color: "var(--ink-muted)", borderTop: "1px solid var(--border)" }}
-      >
-        <span className="font-serif italic">Trackly</span>
-        <span className="flex gap-5.5">
-          <Link href="/privacy">Privacy</Link>
-          <Link href="/terms">Terms</Link>
-        </span>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
