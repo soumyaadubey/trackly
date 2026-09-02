@@ -72,9 +72,11 @@ export default async function RootPage() {
 
         <div className="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div className="rounded p-7" style={{ background: "var(--paper)", border: "1px solid var(--border)" }}>
-            <ClockIcon size={20} style={{ color: "var(--accent)", marginBottom: 12 }} />
-            <div className="font-serif mb-3 text-[15px] italic" style={{ color: "var(--accent)" }}>
-              Deadlines, weighted
+            <div className="mb-3 flex items-center gap-2.5">
+              <ClockIcon size={20} style={{ color: "var(--accent)", flexShrink: 0 }} />
+              <div className="font-serif text-[15px] italic" style={{ color: "var(--accent)" }}>
+                Deadlines, weighted
+              </div>
             </div>
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--ink-muted)" }}>
               Overdue items stay visibly urgent, due-this-week ones sit right
@@ -83,9 +85,11 @@ export default async function RootPage() {
             </p>
           </div>
           <div className="rounded p-7" style={{ background: "var(--paper)", border: "1px solid var(--border)" }}>
-            <LinkIcon size={20} style={{ color: "var(--accent)", marginBottom: 12 }} />
-            <div className="font-serif mb-3 text-[15px] italic" style={{ color: "var(--accent)" }}>
-              Notes stay with the link
+            <div className="mb-3 flex items-center gap-2.5">
+              <LinkIcon size={20} style={{ color: "var(--accent)", flexShrink: 0 }} />
+              <div className="font-serif text-[15px] italic" style={{ color: "var(--accent)" }}>
+                Notes stay with the link
+              </div>
             </div>
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--ink-muted)" }}>
               Who referred you, which essay you reused, where you left off in
