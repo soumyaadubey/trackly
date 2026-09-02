@@ -44,3 +44,9 @@ next-env.d.ts
 # AI tooling config (local-only, not needed by other collaborators)
 AGENTS.md
 CLAUDE.md
+
+# Local-only engineering docs (review notes, remediation tracking)
+REVIEW.md
+
+# Supabase CLI scratch
+supabase/.temp/
