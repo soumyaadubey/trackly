@@ -96,6 +96,14 @@
   --font-sans: var(--font-instrument-sans), system-ui, sans-serif;
 }
 
+/* overflow-x on body alone is unreliable — when body is not the viewport's
+   scrolling element the overflow propagates to html and the whole page pans
+   sideways anyway. Setting both is what actually contains it. This is a safety
+   net, not a fix: anything that overflows should be corrected at the source. */
+html {
+  overflow-x: hidden;
+}
+
 body {
   background: var(--page);
   color: var(--ink);

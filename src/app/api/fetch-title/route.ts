@@ -5,6 +5,7 @@ import { isIP } from "node:net";
 import { Agent, fetch as undiciFetch, type Response as UndiciResponse } from "undici";
 import { getCurrentUser } from "@/lib/auth";
 import { MAX_TITLE_LENGTH } from "@/lib/items";
+import { decodeEntities } from "@/lib/html";
 
 function isPrivateIp(ip: string): boolean {
   const family = isIP(ip);
@@ -208,6 +209,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ title: null });
     }
 
+    // Only take a title from a successful response.
+    //
+    // Error and bot-challenge pages are still HTML with a perfectly good
+    // <title>, so without this the endpoint cheerfully returns theirs. Udemy
+    // answers a non-browser User-Agent with a Cloudflare interstitial —
+    // 403, text/html, <title>Just a moment...</title> — and that string was
+    // being written straight into the user's title field. Silently filling in
+    // wrong data is worse than filling in nothing.
+    if (!res.ok) {
+      return NextResponse.json({ title: null });
+    }
+
     // Only parse things that claim to be HTML. Without this, pointing the
     // lookup at a video or an archive meant downloading it to regex over bytes
     // that could never contain a <title>.
@@ -225,34 +238,4 @@ export async function GET(request: NextRequest) {
   } catch {
     return NextResponse.json({ title: null });
   }
-}
-
-/**
- * Decode the handful of entities that actually show up in page titles. Titles
- * came back with raw "&amp;" before this, so "Foo &amp; Bar" landed in the
- * field verbatim.
- */
-function decodeEntities(input: string): string {
-  const named: Record<string, string> = {
-    amp: "&",
-    lt: "<",
-    gt: ">",
-    quot: '"',
-    apos: "'",
-    nbsp: " ",
-    "#39": "'",
-  };
-  return input.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (whole, entity: string) => {
-    const key = entity.toLowerCase();
-    if (key in named) return named[key];
-    if (key.startsWith("#x")) {
-      const code = parseInt(key.slice(2), 16);
-      return Number.isFinite(code) ? String.fromCodePoint(code) : whole;
-    }
-    if (key.startsWith("#")) {
-      const code = parseInt(key.slice(1), 10);
-      return Number.isFinite(code) ? String.fromCodePoint(code) : whole;
-    }
-    return whole;
-  });
 }

@@ -144,18 +144,25 @@ export default async function Home({ name }: { name: string }) {
                 >
                   <Icon size={16} style={{ color: `var(--kind-${item.kind})`, flexShrink: 0 }} />
                   <div className="min-w-0 flex-1">
+                    {/* `block` is load-bearing: Link renders an <a>, which is
+                        display:inline, and `truncate` does nothing on an inline
+                        element because overflow doesn't apply to it. Without it a
+                        long title runs straight through the kind label and the
+                        deadline, and pushes the page into horizontal scroll. */}
                     <Link
                       href={`/items/${item.id}/edit`}
-                      className="truncate text-[14px] font-medium hover:underline"
+                      className="block truncate text-[14px] font-medium hover:underline"
                       style={{ color: "var(--ink)" }}
                     >
                       {item.title}
                     </Link>
-                    <span className="ml-2 text-[11px]" style={{ color: "var(--ink-faint)" }}>
+                    {/* On its own line rather than inline after the title, so it
+                        can never be displaced by a long one. */}
+                    <div className="text-[11px]" style={{ color: "var(--ink-faint)" }}>
                       {KIND_CONFIG[item.kind].label}
-                    </span>
+                    </div>
                   </div>
-                  <div className="shrink-0 text-[13px]">
+                  <div className="shrink-0 whitespace-nowrap text-[13px]">
                     <DeadlineBadge deadline={item.deadline!} today={today} />
                   </div>
                 </li>
