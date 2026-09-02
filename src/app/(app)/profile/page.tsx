@@ -1,17 +1,12 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth";
 import { initialsFor } from "@/lib/user";
 import ChangePasswordForm from "./ChangePasswordForm";
 import ProfileForm from "./ProfileForm";
 import AvatarForm from "./AvatarForm";
+import DeleteAccountForm from "./DeleteAccountForm";
 
 export default async function ProfilePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const user = await requireUser();
 
   const firstName = (user.user_metadata?.first_name as string) ?? "";
   const lastName = (user.user_metadata?.last_name as string) ?? "";
@@ -61,6 +56,19 @@ export default async function ProfilePage() {
         <a href="/api/export" className="pill-btn-secondary inline-block text-[13px]">
           Export as CSV
         </a>
+      </div>
+
+      <div
+        className="mt-5 rounded p-7"
+        style={{ background: "var(--paper)", border: "1px solid var(--danger-border)" }}
+      >
+        <h2 className="font-serif mb-2 text-[17px]" style={{ color: "var(--ink)" }}>
+          Delete account
+        </h2>
+        <p className="mb-4 text-[13px]" style={{ color: "var(--ink-muted)" }}>
+          Removes your account and everything in it, permanently.
+        </p>
+        <DeleteAccountForm />
       </div>
     </div>
   );

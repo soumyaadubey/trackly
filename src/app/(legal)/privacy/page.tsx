@@ -54,10 +54,16 @@ export default function PrivacyPage() {
             Your control over it
           </h2>
           <p>
-            You can edit or delete any item you&apos;ve added at any time
-            from within the app — deletions take effect immediately. To
-            delete your account and all associated data entirely, reach out
-            using the contact details on the Terms page.
+            You can edit or delete any item you&apos;ve added at any time from
+            within the app — deletions take effect immediately, with a short
+            window to undo. You can download everything you&apos;ve saved as a
+            CSV from your profile at any point.
+          </p>
+          <p className="mt-3">
+            You can also delete your account yourself, from{" "}
+            <strong>Profile → Delete account</strong>. That removes your
+            account, every item on it, and your profile photo. It is immediate
+            and cannot be undone, so export first if you want a copy.
           </p>
         </section>
         <section>

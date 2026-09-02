@@ -60,8 +60,21 @@ export default function TermsPage() {
             Contact
           </h2>
           <p>
-            Questions, bug reports, or account-deletion requests: open an
-            issue on the project&apos;s GitHub repository.
+            You don&apos;t need to contact anyone to delete your account — do it
+            yourself from <strong>Profile → Delete account</strong>, and export
+            your data first from the same page if you want to keep a copy.
+          </p>
+          <p className="mt-3">
+            For questions or bug reports, open an issue on the{" "}
+            <a
+              href="https://github.com/soumyaadubey/trackly"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "var(--accent)", textDecoration: "underline" }}
+            >
+              project&apos;s GitHub repository
+            </a>
+            .
           </p>
         </section>
       </div>
