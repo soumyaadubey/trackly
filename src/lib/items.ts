@@ -199,23 +199,54 @@ export function normalizeUrl(raw: string): string {
 
 export type Urgency = "overdue" | "soon" | "normal" | "none";
 
-export function deadlineUrgency(deadline: string | null): Urgency {
+/**
+ * Whole days from `from` to `to`. Both are YYYY-MM-DD calendar dates.
+ *
+ * Anchored to UTC midnight purely as a counting device — no timezone is being
+ * asserted here. Doing the arithmetic on local Date objects (the previous
+ * approach) breaks across a DST boundary, where two consecutive calendar days
+ * are 23 or 25 hours apart and a millisecond division rounds to the wrong day.
+ */
+export function daysBetweenDates(from: string, to: string): number {
+  const utcDay = (iso: string) => {
+    const [y, m, d] = iso.split("-").map(Number);
+    return Date.UTC(y, m - 1, d) / 86_400_000;
+  };
+  return utcDay(to) - utcDay(from);
+}
+
+/** The calendar date at a given offset (minutes ahead of UTC) right now. */
+export function todayForOffset(offsetMinutes: number, now: number = Date.now()): string {
+  return new Date(now + offsetMinutes * 60_000).toISOString().slice(0, 10);
+}
+
+/** The calendar date in the runtime's own local timezone. */
+export function localToday(now: Date = new Date()): string {
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
+ * How urgent a deadline is, relative to a caller-supplied "today".
+ *
+ * `today` is a parameter rather than being read from the clock so that the
+ * server and the client can be given the same reference date and agree on the
+ * answer. When this read `new Date()` internally, the server (UTC) and the
+ * viewer could not agree, so the component rendered a raw ISO date and swapped
+ * it after hydration — a visible reflow on every row of every page.
+ */
+export function deadlineUrgency(deadline: string | null, today: string): Urgency {
   if (!deadline) return "none";
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(deadline + "T00:00:00");
-  const diffDays = Math.round((due.getTime() - today.getTime()) / 86_400_000);
+  const diffDays = daysBetweenDates(today, deadline);
   if (diffDays < 0) return "overdue";
   if (diffDays <= 7) return "soon";
   return "normal";
 }
 
-export function formatDeadline(deadline: string, urgency: Urgency): string {
-  const due = new Date(deadline + "T00:00:00");
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diffDays = Math.round((due.getTime() - today.getTime()) / 86_400_000);
-  const dateLabel = due.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+export function formatDeadline(deadline: string, urgency: Urgency, today: string): string {
+  const diffDays = daysBetweenDates(today, deadline);
 
   if (urgency === "overdue") {
     const daysAgo = Math.abs(diffDays);
@@ -225,5 +256,12 @@ export function formatDeadline(deadline: string, urgency: Urgency): string {
     if (diffDays === 0) return "Due today";
     return `In ${diffDays} day${diffDays === 1 ? "" : "s"}`;
   }
-  return dateLabel;
+
+  // Formatted in UTC against a UTC-parsed date, so the output does not depend
+  // on the runtime's timezone — server and client produce the same string.
+  return new Date(`${deadline}T00:00:00Z`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }

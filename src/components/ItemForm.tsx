@@ -1,8 +1,17 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { KIND_CONFIG, KIND_ROUTE, type Item, type Kind } from "@/lib/items";
+import {
+  KIND_CONFIG,
+  KIND_ROUTE,
+  MAX_NOTES_LENGTH,
+  MAX_TAGS,
+  MAX_TAG_LENGTH,
+  MAX_TITLE_LENGTH,
+  type Item,
+  type Kind,
+} from "@/lib/items";
 import type { SaveState } from "@/app/(app)/items/actions";
 
 type Props = {
@@ -14,11 +23,26 @@ type Props = {
 
 const initialState: SaveState = { error: null };
 
+/**
+ * A cheap "is the user finished typing a link" check for inline validation.
+ *
+ * This used to reject anything containing a comma, which fails valid URLs like
+ * https://example.com/a,b. Parsing it properly is both more accurate and
+ * shorter — the only thing the heuristic still has to add is requiring a dot in
+ * the host, since `new URL("https://foo")` is technically valid but is almost
+ * always a half-typed address.
+ */
 function looksLikeUrl(value: string): boolean {
   const v = value.trim();
   if (!v) return false;
-  if (v.includes(",")) return false;
-  return /\.[a-z]{2,}/i.test(v);
+  if (/\s/.test(v)) return false;
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(v) ? v : `https://${v}`);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    return /\.[a-z]{2,}$/i.test(parsed.hostname) || parsed.hostname === "localhost";
+  } catch {
+    return false;
+  }
 }
 
 export default function ItemForm({ kind, action, initial, submitLabel }: Props) {
@@ -28,12 +52,17 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
   const [tags, setTags] = useState<string[]>(initial?.tags ?? []);
   const [tagInput, setTagInput] = useState("");
   const [fetchingTitle, setFetchingTitle] = useState(false);
+  const [autofillError, setAutofillError] = useState<string | null>(null);
+  const autofillAbort = useRef<AbortController | null>(null);
   const [touched, setTouched] = useState<{ url: boolean; title: boolean }>({
     url: false,
     title: false,
   });
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const config = KIND_CONFIG[kind];
+
+  // Don't leave a request running against an unmounted form.
+  useEffect(() => () => autofillAbort.current?.abort(), []);
 
   const urlInvalid = url.trim() !== "" && !looksLikeUrl(url);
   const urlMissing = url.trim() === "";
@@ -47,24 +76,60 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
     [showUrlError, showTitleError],
   );
 
-  async function autofillTitle() {
+  /**
+   * Fetch the linked page's <title>.
+   *
+   * `overwrite` separates the two callers. The button is an explicit request,
+   * so it replaces whatever is in the field. The URL field's onBlur is not —
+   * it used to call setTitle unconditionally, so going back to fix a typo in
+   * the URL silently destroyed a title the user had already typed.
+   */
+  async function autofillTitle({ overwrite }: { overwrite: boolean }) {
     if (!url.trim() || urlInvalid) return;
+    if (!overwrite && title.trim() !== "") return;
+
+    // Cancel any request still in flight. Two quick edits could otherwise land
+    // out of order and apply the older page's title over the newer one.
+    autofillAbort.current?.abort();
+    const controller = new AbortController();
+    autofillAbort.current = controller;
+
     setFetchingTitle(true);
+    setAutofillError(null);
     try {
       const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`;
-      const res = await fetch(
-        `/api/fetch-title?url=${encodeURIComponent(normalized)}`,
-      );
+      const res = await fetch(`/api/fetch-title?url=${encodeURIComponent(normalized)}`, {
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        throw new Error(`fetch-title responded ${res.status}`);
+      }
       const data = await res.json();
-      if (data.title) setTitle(data.title);
+      if (controller.signal.aborted) return;
+      if (data.title) {
+        setTitle(data.title);
+      } else {
+        setAutofillError("Couldn't read a title from that page — type one in.");
+      }
+    } catch (err) {
+      // Previously this was try/finally with no catch, and onBlur called it
+      // without awaiting: a failure became an unhandled rejection and the user
+      // saw nothing at all.
+      if ((err as Error)?.name === "AbortError") return;
+      setAutofillError("Couldn't reach that page — type a title in instead.");
     } finally {
-      setFetchingTitle(false);
+      if (autofillAbort.current === controller) {
+        autofillAbort.current = null;
+        setFetchingTitle(false);
+      }
     }
   }
 
   function addTag() {
-    const t = tagInput.trim();
-    if (t && !tags.includes(t)) setTags([...tags, t]);
+    const t = tagInput.trim().slice(0, MAX_TAG_LENGTH);
+    if (t && !tags.includes(t) && tags.length < MAX_TAGS) {
+      setTags([...tags, t]);
+    }
     setTagInput("");
   }
 
@@ -91,14 +156,15 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
               onChange={(e) => setUrl(e.target.value)}
               onBlur={() => {
                 setTouched((t) => ({ ...t, url: true }));
-                autofillTitle();
+                void autofillTitle({ overwrite: false });
               }}
               placeholder="https://example.com"
+              maxLength={2048}
               className={`field-input flex-1 ${showUrlError ? "invalid" : ""}`}
             />
             <button
               type="button"
-              onClick={autofillTitle}
+              onClick={() => void autofillTitle({ overwrite: true })}
               disabled={fetchingTitle || urlInvalid || !url.trim()}
               className="pill-btn-secondary shrink-0 whitespace-nowrap text-[13px]"
             >
@@ -110,6 +176,11 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
               {urlMissing
                 ? "A link is required."
                 : "This doesn't look like a link yet — check for a typo."}
+            </p>
+          )}
+          {!showUrlError && autofillError && (
+            <p className="field-error mt-1.5" role="status">
+              {autofillError}
             </p>
           )}
         </div>
@@ -125,6 +196,7 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => setTouched((t) => ({ ...t, title: true }))}
+            maxLength={MAX_TITLE_LENGTH}
             className={`field-input ${showTitleError ? "invalid" : ""}`}
           />
           {showTitleError && (
@@ -200,7 +272,15 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
                 }
               }}
               onBlur={addTag}
-              placeholder={tags.length === 0 ? "Add a tag…" : ""}
+              maxLength={MAX_TAG_LENGTH}
+              disabled={tags.length >= MAX_TAGS}
+              placeholder={
+                tags.length === 0
+                  ? "Add a tag…"
+                  : tags.length >= MAX_TAGS
+                    ? `${MAX_TAGS} tags is the limit`
+                    : ""
+              }
               className="min-w-[100px] flex-1 bg-transparent text-sm outline-none"
               style={{ color: "var(--ink)" }}
             />
@@ -216,6 +296,7 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
             id="notes"
             name="notes"
             rows={3}
+            maxLength={MAX_NOTES_LENGTH}
             defaultValue={initial?.notes ?? ""}
             className="field-input font-serif"
             style={{ fontSize: 15, lineHeight: 1.6 }}

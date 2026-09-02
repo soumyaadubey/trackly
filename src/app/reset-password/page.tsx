@@ -1,6 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
+import Logo from "@/components/Logo";
+import ThemeToggle from "@/components/ThemeToggle";
 import { updatePassword, type ResetState } from "./actions";
 
 const initialState: ResetState = { error: null };
@@ -9,7 +12,22 @@ export default function ResetPasswordPage() {
   const [state, formAction, pending] = useActionState(updatePassword, initialState);
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-4" style={{ background: "var(--panel)" }}>
+    <div className="flex flex-1 flex-col" style={{ background: "var(--panel)" }}>
+      {/* Same dead end the legal pages had: landing here from an email link
+          left no way out except the browser's back button. */}
+      <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-7 py-5">
+        <Link
+          href="/"
+          className="flex items-center gap-2 font-serif text-[19px] leading-none"
+          style={{ color: "var(--ink)" }}
+        >
+          <Logo size={26} />
+          Trackly
+        </Link>
+        <ThemeToggle />
+      </header>
+
+      <div className="flex flex-1 items-start justify-center px-4 pb-16 pt-4">
       <div
         className="w-full max-w-[420px] rounded p-9"
         style={{ background: "var(--paper)", border: "1px solid var(--border)" }}
@@ -28,7 +46,7 @@ export default function ResetPasswordPage() {
               name="password"
               type="password"
               required
-              minLength={6}
+              minLength={8}
               autoComplete="new-password"
               className="field-input"
             />
@@ -40,6 +58,7 @@ export default function ResetPasswordPage() {
             {pending ? "Saving…" : "Update password"}
           </button>
         </form>
+      </div>
       </div>
     </div>
   );

@@ -1,9 +1,18 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { ITEMS_PER_PAGE, KIND_CONFIG, KIND_ROUTE, type Item, type Kind } from "@/lib/items";
+import {
+  ITEMS_PER_PAGE,
+  KIND_CONFIG,
+  KIND_ROUTE,
+  MAX_TAG_LENGTH,
+  type Item,
+  type Kind,
+} from "@/lib/items";
+import { reportError } from "@/lib/errors";
 import StatusSelect from "@/components/StatusSelect";
 import DeleteButton from "@/components/DeleteButton";
 import DeadlineBadge from "@/components/DeadlineBadge";
+import { getViewerToday } from "@/lib/viewer-date";
 import { KIND_ICON } from "@/components/icons";
 
 type Props = {
@@ -17,18 +26,32 @@ export default async function ItemsList({ kind, searchParams }: Props) {
   const Icon = KIND_ICON[kind];
 
   const view = searchParams.view === "archive" ? "archive" : "active";
+  const visibleStatuses = view === "archive" ? config.archiveStatuses : config.activeStatuses;
+
+  // Validate the status against the statuses this *view* shows, not against
+  // every status the kind has. Checking the full set meant ?view=active&
+  // status=rejected rendered archived rows under a highlighted "Active" tab,
+  // with the dropdown showing "All statuses" because it had no such option.
   const rawStatus = searchParams.status;
   const statusFilter =
-    typeof rawStatus === "string" && config.statuses.includes(rawStatus)
+    typeof rawStatus === "string" && visibleStatuses.includes(rawStatus)
       ? rawStatus
       : null;
-  const q = typeof searchParams.q === "string" ? searchParams.q.trim() : "";
+
+  const q = typeof searchParams.q === "string" ? searchParams.q.trim().slice(0, 200) : "";
+  const tagFilter =
+    typeof searchParams.tag === "string" && searchParams.tag.trim()
+      ? searchParams.tag.trim().slice(0, MAX_TAG_LENGTH)
+      : null;
   const rawPage = typeof searchParams.page === "string" ? parseInt(searchParams.page, 10) : 1;
   const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
 
   const supabase = await createClient();
 
-  const visibleStatuses = view === "archive" ? config.archiveStatuses : config.activeStatuses;
+  // The viewer's own calendar date, so deadline labels are correct in the
+  // initial HTML rather than being corrected after hydration.
+  const today = await getViewerToday();
+
   const statusesToQuery = statusFilter ? [statusFilter] : visibleStatuses;
 
   let query = supabase
@@ -39,12 +62,24 @@ export default async function ItemsList({ kind, searchParams }: Props) {
     .order("deadline", { ascending: true, nullsFirst: false });
 
   if (q) {
-    // Quote the value so commas/parens/colons in the search text aren't
-    // parsed as PostgREST filter syntax (e.g. a comma splitting into an
-    // unintended extra clause). Backslashes and quotes inside must be
-    // escaped since the quoted value uses backslash-escaping itself.
-    const escaped = q.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-    query = query.or(`title.ilike."%${escaped}%",notes.ilike."%${escaped}%"`);
+    // search_text is a generated column (title + notes + tags) with a trigram
+    // index behind it, so this is one indexed predicate rather than the three
+    // ORed sequential scans it replaced — and it finally searches tags, which
+    // the placeholder had always claimed it did.
+    //
+    // The value is still quoted so commas/parens/colons in the search text
+    // aren't parsed as PostgREST filter syntax. Backslashes and quotes inside
+    // must be escaped since the quoted value uses backslash-escaping itself.
+    // % and _ are escaped too, so a literal % doesn't become a LIKE wildcard.
+    const escaped = q
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"')
+      .replace(/[%_]/g, (c) => `\\${c}`);
+    query = query.ilike("search_text", `%${escaped}%`);
+  }
+
+  if (tagFilter) {
+    query = query.contains("tags", [tagFilter]);
   }
 
   query = query.range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1);
@@ -55,6 +90,13 @@ export default async function ItemsList({ kind, searchParams }: Props) {
     { count: archiveCount },
   ] = await Promise.all([
     query.returns<Item[]>(),
+    // These two must be "exact". A "planned" count returns the query planner's
+    // estimate from pg_class.reltuples, which on a table of this size is not
+    // an approximation of the answer — it is unrelated to it, and reports
+    // things like "1" for a tab holding a dozen rows. The estimate only starts
+    // resembling reality on tables large enough for ANALYZE to have meaningful
+    // statistics, which is also the only point at which an exact count costs
+    // enough to be worth trading away. Revisit at ~100k rows per user, not before.
     supabase
       .from("items")
       .select("id", { count: "exact", head: true })
@@ -67,7 +109,11 @@ export default async function ItemsList({ kind, searchParams }: Props) {
       .in("status", config.archiveStatuses),
   ]);
 
-  const isFiltered = Boolean(q || statusFilter);
+  if (error) {
+    reportError("ItemsList.query", error);
+  }
+
+  const isFiltered = Boolean(q || statusFilter || tagFilter);
   const totalPages = Math.max(1, Math.ceil((totalCount ?? 0) / ITEMS_PER_PAGE));
   const outOfRange = (totalCount ?? 0) > 0 && (items?.length ?? 0) === 0;
 
@@ -76,7 +122,15 @@ export default async function ItemsList({ kind, searchParams }: Props) {
     params.set("view", view);
     if (statusFilter) params.set("status", statusFilter);
     if (q) params.set("q", q);
+    if (tagFilter) params.set("tag", tagFilter);
     if (targetPage > 1) params.set("page", String(targetPage));
+    return `${route}?${params.toString()}`;
+  }
+
+  function tagHref(tag: string) {
+    const params = new URLSearchParams();
+    params.set("view", view);
+    params.set("tag", tag);
     return `${route}?${params.toString()}`;
   }
 
@@ -107,20 +161,34 @@ export default async function ItemsList({ kind, searchParams }: Props) {
         </div>
 
         <form
-          className="flex flex-wrap gap-2.5 px-6.5 py-3.5"
+          className="flex flex-wrap items-center gap-2.5 px-6.5 py-3.5"
           style={{ borderBottom: "1px solid var(--border-soft)" }}
           method="get"
+          role="search"
+          aria-label={`Filter ${config.pluralLabel.toLowerCase()}`}
         >
           <input type="hidden" name="view" value={view} />
+          {tagFilter && <input type="hidden" name="tag" value={tagFilter} />}
+
+          <label htmlFor="items-search" className="sr-only">
+            Search {config.pluralLabel.toLowerCase()}
+          </label>
           <input
+            id="items-search"
             type="search"
             name="q"
             defaultValue={q}
+            maxLength={200}
             placeholder="Search titles, tags, notes…"
             className="min-w-[180px] flex-1 rounded-full px-4 py-2 text-[13px]"
             style={{ background: "var(--panel)", border: "1px solid var(--input-border)", color: "var(--ink)" }}
           />
+
+          <label htmlFor="items-status" className="sr-only">
+            Filter by status
+          </label>
           <select
+            id="items-status"
             name="status"
             defaultValue={statusFilter ?? ""}
             className="rounded-full px-4 py-2 text-[13px]"
@@ -136,12 +204,27 @@ export default async function ItemsList({ kind, searchParams }: Props) {
           <button type="submit" className="pill-btn-secondary text-[13px]">
             Filter
           </button>
+
+          {tagFilter && (
+            <span className="flex items-center gap-1.5 text-[12px]" style={{ color: "var(--ink-muted)" }}>
+              Tagged
+              <span className="tag-chip">{tagFilter}</span>
+              <Link
+                href={`${route}?view=${view}`}
+                className="row-action"
+                aria-label={`Clear the ${tagFilter} tag filter`}
+              >
+                Clear
+              </Link>
+            </span>
+          )}
         </form>
 
         {error && (
           <div className="m-6.5 rounded p-5" style={{ background: "var(--danger-bg)", border: "1px solid var(--danger-border)" }}>
             <p className="text-sm" style={{ color: "var(--danger)" }}>
-              Couldn&apos;t load {config.pluralLabel.toLowerCase()}: {error.message}
+              Couldn&apos;t load {config.pluralLabel.toLowerCase()} just now.
+              Everything you&apos;ve saved is still there — try reloading.
             </p>
           </div>
         )}
@@ -219,10 +302,17 @@ export default async function ItemsList({ kind, searchParams }: Props) {
                     )}
                     {item.tags.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
+                        {/* Tags were stored, rendered, and otherwise inert.
+                            Clicking one now filters the list by it. */}
                         {item.tags.map((tag) => (
-                          <span key={tag} className="tag-chip">
+                          <Link
+                            key={tag}
+                            href={tagHref(tag)}
+                            className="tag-chip tag-chip-link"
+                            aria-label={`Show only items tagged ${tag}`}
+                          >
                             {tag}
-                          </span>
+                          </Link>
                         ))}
                       </div>
                     )}
@@ -233,7 +323,7 @@ export default async function ItemsList({ kind, searchParams }: Props) {
 
                     <div className="sm:w-[110px] sm:text-right">
                       {item.deadline ? (
-                        <DeadlineBadge deadline={item.deadline} showDate />
+                        <DeadlineBadge deadline={item.deadline} today={today} showDate />
                       ) : (
                         <span className="text-[13px]" style={{ color: "var(--ink-faintest)" }}>
                           No deadline
@@ -245,7 +335,7 @@ export default async function ItemsList({ kind, searchParams }: Props) {
                       <Link href={`/items/${item.id}/edit`} className="row-action">
                         Edit
                       </Link>
-                      <DeleteButton id={item.id} title={item.title} />
+                      <DeleteButton item={item} />
                     </div>
                   </div>
                 </li>

@@ -1,24 +1,46 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { KIND_CONFIG, KIND_ROUTE, KINDS, type Item } from "@/lib/items";
+import { reportError } from "@/lib/errors";
 import DeadlineBadge from "@/components/DeadlineBadge";
+import { getViewerToday } from "@/lib/viewer-date";
 import { KIND_ICON } from "@/components/icons";
 
 export default async function Home({ name }: { name: string }) {
   const supabase = await createClient();
 
-  const [{ data: withDeadlines }, counts] = await Promise.all([
+  // The viewer's own calendar date, so deadline labels are correct in the
+  // initial HTML rather than being corrected after hydration.
+  const today = await getViewerToday();
+
+  // Every status that counts as "still live", across all three kinds. The
+  // per-kind status sets don't overlap in meaning, but they do share names
+  // ("saved", "in_progress"), so a flat set is enough to filter on in SQL and
+  // the kind-specific check below stays exact.
+  const activeStatuses = Array.from(
+    new Set(KINDS.flatMap((kind) => KIND_CONFIG[kind].activeStatuses)),
+  );
+
+  const [{ data: withDeadlines, error: upcomingError }, counts] = await Promise.all([
     supabase
       .from("items")
       .select("*")
       .not("deadline", "is", null)
+      // The status filter has to happen in the query. Fetching the 30 soonest
+      // deadlines and filtering afterwards meant a user whose next 30 deadlines
+      // were all completed or rejected saw "Nothing with a deadline yet" while
+      // live deadlines sat just outside the window.
+      .in("status", activeStatuses)
       .order("deadline", { ascending: true })
-      .limit(30)
+      .limit(24)
       .returns<Item[]>(),
     Promise.all(
       KINDS.map((kind) =>
         supabase
           .from("items")
+          // Must be "exact" — see the note in ItemsList. A "planned" count is
+          // the planner's reltuples estimate, which is meaningless at this
+          // table size and renders visibly wrong numbers on the dashboard.
           .select("id", { count: "exact", head: true })
           .eq("kind", kind)
           .in("status", KIND_CONFIG[kind].activeStatuses),
@@ -26,6 +48,13 @@ export default async function Home({ name }: { name: string }) {
     ),
   ]);
 
+  if (upcomingError) {
+    reportError("Home.upcoming", upcomingError);
+  }
+
+  // Narrow to the statuses that are actually active *for that item's kind* —
+  // the SQL filter above is the union, so e.g. an opportunity with status
+  // "in_progress" could not exist, but this keeps the rule exact either way.
   const upcoming = (withDeadlines ?? [])
     .filter((item) => KIND_CONFIG[item.kind].activeStatuses.includes(item.status))
     .slice(0, 6);
@@ -127,7 +156,7 @@ export default async function Home({ name }: { name: string }) {
                     </span>
                   </div>
                   <div className="shrink-0 text-[13px]">
-                    <DeadlineBadge deadline={item.deadline!} />
+                    <DeadlineBadge deadline={item.deadline!} today={today} />
                   </div>
                 </li>
               );

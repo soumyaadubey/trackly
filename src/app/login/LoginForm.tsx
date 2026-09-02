@@ -150,7 +150,7 @@ export default function LoginForm({ initialError }: { initialError?: string }) {
                     name="password"
                     type="password"
                     required
-                    minLength={6}
+                    minLength={8}
                     autoComplete={mode === "login" ? "current-password" : "new-password"}
                     className="field-input"
                   />
@@ -171,9 +171,13 @@ export default function LoginForm({ initialError }: { initialError?: string }) {
                 </button>
               </form>
 
+              {/* In signup mode this reads "Already have an account?", so it has
+                  to go to the login form. It used to call setMode("forgot")
+                  unconditionally, dropping new users onto the password-reset
+                  screen from the second-most-clicked control on the page. */}
               <button
                 type="button"
-                onClick={() => setMode("forgot")}
+                onClick={() => setMode(mode === "login" ? "forgot" : "login")}
                 className="font-serif mt-4 block w-full text-center text-[13px] italic"
                 style={{ color: "var(--ink-muted)" }}
               >
