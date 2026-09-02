@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Newsreader, Instrument_Sans } from "next/font/google";
 import "./globals.css";
 
@@ -18,6 +18,19 @@ const instrumentSans = Instrument_Sans({
 export const metadata: Metadata = {
   title: "Trackly",
   description: "Track hackathon applications, courses, and roadmaps in one place.",
+};
+
+/**
+ * Tints the browser's own chrome — the address bar on Android, the tab strip
+ * and title bar on desktop — to match the page instead of leaving it default
+ * grey. Two entries so it follows the OS setting; these are the --page values
+ * from globals.css and must be kept in step with them.
+ */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f3f0e0" },
+    { media: "(prefers-color-scheme: dark)", color: "#14140d" },
+  ],
 };
 
 /**

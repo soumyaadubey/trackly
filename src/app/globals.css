@@ -2,93 +2,93 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --page: #f0eee9;
-  --panel: #efe9dd;
-  --paper: #fbf7ef;
-  --paper-line: #f1e9da;
-  --border: #ded4c3;
-  --border-soft: #ede3d2;
-  --input-border: #e4dac9;
-  --ink: #2a2622;
-  --ink-muted: #7c7266;
-  --ink-faint: #9c9184;
-  --ink-faintest: #a9a094;
+  --page:#f3f0e0;
+  --panel:#ece8d5;
+  --paper:#fdfbef;
+  --paper-line:#f3efdd;
+  --border:#dbd5bb;
+  --border-soft:#eae5d0;
+  --input-border:#e2dcc4;
+  --ink:#26241b;
+  --ink-muted:#77715c;
+  --ink-faint:#948d75;
+  --ink-faintest:#a29b84;
 
-  --accent: #bb5a35;
-  --accent-hover: #a44a29;
-  --accent-pressed: #8f3f22;
-  --accent-fg: #fbf7ef;
-  --accent-soft-bg: #f5e6dc;
-  --accent-soft-fg: #a44a29;
+  --accent:#2b4f7c;
+  --accent-hover:#22406a;
+  --accent-pressed:#1a3355;
+  --accent-fg:#fdfbef;
+  --accent-soft-bg:#e2e8f1;
+  --accent-soft-fg:#22406a;
 
-  --kind-opportunity: #bb5a35;
-  --kind-course: #2b6f83;
-  --kind-roadmap: #6b4d8f;
+  --kind-opportunity:#2b4f7c;
+  --kind-course:#1f6b62;
+  --kind-roadmap:#7c4a6b;
 
-  --overdue: #c62828;
-  --due-soon: #b06a00;
-  --focus-ring: #a06a1c;
+  --overdue:#b03535;
+  --due-soon:#96681a;
+  --focus-ring:#2b4f7c;
 
-  --danger: #a33a2a;
-  --danger-bg: #fdf3f1;
-  --danger-border: #e8c9c4;
+  --danger:#9c3327;
+  --danger-bg:#fbf1ee;
+  --danger-border:#e5c6bf;
 
-  --status-applying-bg: #e7eef7;
-  --status-applying-fg: #2f4f7a;
-  --status-applied-bg: #e3ece1;
-  --status-applied-fg: #3d6b3a;
-  --status-interview-bg: #f3e9d5;
-  --status-interview-fg: #8a6416;
-  --status-neutral-bg: #efe9dd;
-  --status-neutral-fg: #7c7266;
+  --status-applying-bg:#e2e8f1;
+  --status-applying-fg:#2b4f7c;
+  --status-applied-bg:#e0ebe6;
+  --status-applied-fg:#256054;
+  --status-interview-bg:#f2ecd6;
+  --status-interview-fg:#7d6116;
+  --status-neutral-bg:#ece8d5;
+  --status-neutral-fg:#77715c;
 
-  --disabled-bg: #cfc6b6;
-  --skeleton: #f0e8d9;
+  --disabled-bg:#ccc6ae;
+  --skeleton:#efe9d4;
 }
 
 .dark {
-  --page: #14120f;
-  --panel: #191714;
-  --paper: #211e1a;
-  --paper-line: #262119;
-  --border: #322d26;
-  --border-soft: #2b2721;
-  --input-border: #322d26;
-  --ink: #ece5d8;
-  --ink-muted: #948a7c;
-  --ink-faint: #6d6558;
-  --ink-faintest: #6d6558;
+  --page:#14140d;
+  --panel:#1a1a12;
+  --paper:#222117;
+  --paper-line:#27261a;
+  --border:#333123;
+  --border-soft:#2b2a1e;
+  --input-border:#333123;
+  --ink:#eeead6;
+  --ink-muted:#95907a;
+  --ink-faint:#6f6b58;
+  --ink-faintest:#6f6b58;
 
-  --accent: #e08b64;
-  --accent-hover: #e89b78;
-  --accent-pressed: #d47a52;
-  --accent-fg: #1f1611;
-  --accent-soft-bg: #3a2a20;
-  --accent-soft-fg: #e6a583;
+  --accent:#7fa4d6;
+  --accent-hover:#93b3de;
+  --accent-pressed:#6b91c6;
+  --accent-fg:#101317;
+  --accent-soft-bg:#1f2a38;
+  --accent-soft-fg:#9dbce6;
 
-  --kind-opportunity: #e08b64;
-  --kind-course: #6fb3c4;
-  --kind-roadmap: #a688c9;
+  --kind-opportunity:#7fa4d6;
+  --kind-course:#57b0a3;
+  --kind-roadmap:#cf8fb4;
 
-  --overdue: #ff7a66;
-  --due-soon: #f0ab4f;
-  --focus-ring: #f0ab4f;
+  --overdue:#f47f7f;
+  --due-soon:#dfab55;
+  --focus-ring:#dfab55;
 
-  --danger: #ff9080;
-  --danger-bg: #2a1e1a;
-  --danger-border: #4a2f28;
+  --danger:#f28f80;
+  --danger-bg:#2a1d18;
+  --danger-border:#4a2f26;
 
-  --status-applying-bg: #22313f;
-  --status-applying-fg: #9cc3ea;
-  --status-applied-bg: #25321f;
-  --status-applied-fg: #a7c99b;
-  --status-interview-bg: #332a1a;
-  --status-interview-fg: #e0bd7e;
-  --status-neutral-bg: #2a2620;
-  --status-neutral-fg: #948a7c;
+  --status-applying-bg:#22303f;
+  --status-applying-fg:#a0c2e8;
+  --status-applied-bg:#1e3230;
+  --status-applied-fg:#84c5b8;
+  --status-interview-bg:#332d1a;
+  --status-interview-fg:#e0c07e;
+  --status-neutral-bg:#26251a;
+  --status-neutral-fg:#95907a;
 
-  --disabled-bg: #453f36;
-  --skeleton: #2b2620;
+  --disabled-bg:#413f2e;
+  --skeleton:#2a2820;
 }
 
 @theme inline {
@@ -96,7 +96,7 @@
   --font-sans: var(--font-instrument-sans), system-ui, sans-serif;
 }
 
-/* overflow-x on body alone is unreliable — when body is not the viewport's
+/* overflow-x on body alone is unreliable — when body isn't the viewport's
    scrolling element the overflow propagates to html and the whole page pans
    sideways anyway. Setting both is what actually contains it. This is a safety
    net, not a fix: anything that overflows should be corrected at the source. */
