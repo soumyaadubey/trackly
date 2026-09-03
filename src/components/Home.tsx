@@ -5,6 +5,7 @@ import { reportError } from "@/lib/errors";
 import DeadlineBadge from "@/components/DeadlineBadge";
 import { getViewerToday } from "@/lib/viewer-date";
 import { KIND_ICON } from "@/components/icons";
+import { PAGE_MEASURE } from "@/lib/layout";
 
 export default async function Home({ name }: { name: string }) {
   const supabase = await createClient();
@@ -60,7 +61,7 @@ export default async function Home({ name }: { name: string }) {
     .slice(0, 6);
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-7 py-8">
+    <div className={`mx-auto w-full ${PAGE_MEASURE} px-7 py-8`}>
       <h1 className="font-serif mb-6 text-[26px]" style={{ color: "var(--ink)" }}>
         Welcome back,{" "}
         <span className="relative inline-block font-serif italic" style={{ color: "var(--accent)" }}>

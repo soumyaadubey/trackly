@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { PAGE_MEASURE } from "@/lib/layout";
 
 /**
  * The root error boundary.
@@ -33,7 +34,7 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-7 py-10">
+    <div className={`mx-auto w-full ${PAGE_MEASURE} px-7 py-10`}>
       <div
         className="rounded px-7 py-16 text-center"
         style={{ background: "var(--paper)", border: "1px solid var(--border)" }}

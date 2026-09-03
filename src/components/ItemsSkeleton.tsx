@@ -1,6 +1,8 @@
+import { PAGE_MEASURE } from "@/lib/layout";
+
 export default function ItemsSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-4xl px-7 py-8">
+    <div className={`mx-auto w-full ${PAGE_MEASURE} px-7 py-8`}>
       <div className="rounded" style={{ background: "var(--paper)", border: "1px solid var(--border)" }}>
         <div className="flex items-center justify-between px-6.5 py-4.5" style={{ borderBottom: "1px solid var(--border-soft)" }}>
           <div className="skeleton-bar h-8 w-40 rounded-full" />

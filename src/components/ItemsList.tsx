@@ -14,6 +14,7 @@ import DeleteButton from "@/components/DeleteButton";
 import DeadlineBadge from "@/components/DeadlineBadge";
 import { getViewerToday } from "@/lib/viewer-date";
 import { KIND_ICON } from "@/components/icons";
+import { PAGE_MEASURE } from "@/lib/layout";
 
 type Props = {
   kind: Kind;
@@ -135,7 +136,7 @@ export default async function ItemsList({ kind, searchParams }: Props) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-7 py-8">
+    <div className={`mx-auto w-full ${PAGE_MEASURE} px-7 py-8`}>
       <div
         className="rounded"
         style={{ background: "var(--paper)", border: "1px solid var(--border)", overflow: "hidden" }}

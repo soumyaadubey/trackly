@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PAGE_MEASURE } from "@/lib/layout";
 
 /**
  * The app's footer: wordmark on the left, legal links on the right.
@@ -10,7 +11,7 @@ import Link from "next/link";
 export default function SiteFooter() {
   return (
     <footer
-      className="mx-auto flex w-full max-w-4xl items-center justify-between px-4 py-5 text-[13px] sm:px-7"
+      className={`mx-auto flex w-full ${PAGE_MEASURE} items-center justify-between px-4 py-5 text-[13px] sm:px-7`}
       style={{ color: "var(--ink-muted)", borderTop: "1px solid var(--border)" }}
     >
       <span className="font-serif italic">Trackly</span>

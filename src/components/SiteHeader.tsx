@@ -4,6 +4,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import AccountMenu from "@/components/AccountMenu";
 import NavLinks from "@/components/NavLinks";
 import Logo from "@/components/Logo";
+import { PAGE_MEASURE } from "@/lib/layout";
 
 /**
  * The signed-in app chrome.
@@ -20,7 +21,7 @@ export default async function SiteHeader() {
 
   return (
     <header style={{ background: "var(--panel)", borderBottom: "1px solid var(--border)" }}>
-      <div className="mx-auto w-full max-w-4xl px-7 py-4">
+      <div className={`mx-auto w-full ${PAGE_MEASURE} px-7 py-4`}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-7">
             <Link

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
 import { updatePassword, type ResetState } from "./actions";
+import { PAGE_MEASURE } from "@/lib/layout";
 
 const initialState: ResetState = { error: null };
 
@@ -15,7 +16,7 @@ export default function ResetPasswordPage() {
     <div className="flex flex-1 flex-col" style={{ background: "var(--panel)" }}>
       {/* Same dead end the legal pages had: landing here from an email link
           left no way out except the browser's back button. */}
-      <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-7 py-5">
+      <header className={`mx-auto flex w-full ${PAGE_MEASURE} items-center justify-between px-7 py-5`}>
         <Link
           href="/"
           className="flex items-center gap-2 font-serif text-[19px] leading-none"
