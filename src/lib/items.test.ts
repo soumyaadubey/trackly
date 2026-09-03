@@ -5,6 +5,7 @@ import {
   isKind,
   isStatusForKind,
   daysBetweenDates,
+  addDays,
   isValidDate,
   localToday,
   todayForOffset,
@@ -365,6 +366,32 @@ describe("server/client agreement (the flash this fixed)", () => {
       const deadline = daysFrom(today, offsetDays);
       const label = formatDeadline(deadline, deadlineUrgency(deadline, today), today);
       expect(label).not.toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+  });
+});
+
+describe("addDays", () => {
+  it("moves forwards and backwards", () => {
+    expect(addDays("2026-03-10", 7)).toBe("2026-03-17");
+    expect(addDays("2026-03-10", -2)).toBe("2026-03-08");
+    expect(addDays("2026-03-10", 0)).toBe("2026-03-10");
+  });
+
+  it("crosses month and year boundaries", () => {
+    expect(addDays("2026-01-31", 1)).toBe("2026-02-01");
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+    expect(addDays("2027-01-01", -1)).toBe("2026-12-31");
+  });
+
+  it("handles leap years", () => {
+    expect(addDays("2028-02-28", 1)).toBe("2028-02-29");
+    expect(addDays("2027-02-28", 1)).toBe("2027-03-01");
+  });
+
+  it("round-trips against daysBetweenDates", () => {
+    for (const offset of [-30, -1, 0, 1, 6, 12, 29, 400]) {
+      const target = addDays("2026-09-02", offset);
+      expect(daysBetweenDates("2026-09-02", target)).toBe(offset);
     }
   });
 });

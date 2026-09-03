@@ -215,6 +215,18 @@ export function daysBetweenDates(from: string, to: string): number {
   return utcDay(to) - utcDay(from);
 }
 
+/**
+ * The calendar date `days` after `date`. Negative values go backwards.
+ *
+ * UTC-anchored for the same reason as `daysBetweenDates`: adding 86_400_000ms
+ * to a local Date lands on the wrong day twice a year. `Date.UTC` normalises
+ * an out-of-range day, so month and year boundaries need no special casing.
+ */
+export function addDays(date: string, days: number): string {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
 /** The calendar date at a given offset (minutes ahead of UTC) right now. */
 export function todayForOffset(offsetMinutes: number, now: number = Date.now()): string {
   return new Date(now + offsetMinutes * 60_000).toISOString().slice(0, 10);
