@@ -1,25 +1,13 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { deadlineUrgency, formatDeadline, localToday, type Urgency } from "@/lib/items";
+import { deadlineUrgency, formatDeadline, localToday } from "@/lib/items";
+import { URGENCY_CLASS, URGENCY_STYLE } from "@/components/urgency-styles";
 
 // Nothing to subscribe to — the viewer's calendar date doesn't change while
 // they're looking at the page (a rollover at midnight resolves on next navigation).
 const noopSubscribe = () => () => {};
 
-const URGENCY_STYLE: Record<Urgency, React.CSSProperties> = {
-  overdue: { color: "var(--overdue)", fontWeight: 700 },
-  soon: { color: "var(--due-soon)", fontWeight: 700 },
-  normal: { color: "var(--ink-muted)", fontWeight: 500 },
-  none: { color: "var(--ink-faintest)", fontWeight: 400 },
-};
-
-const URGENCY_CLASS: Record<Urgency, string> = {
-  overdue: "nb-overdue",
-  soon: "",
-  normal: "",
-  none: "",
-};
 
 /**
  * A deadline, rendered relative to the viewer's own calendar date.
