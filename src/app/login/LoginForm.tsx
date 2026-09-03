@@ -11,6 +11,7 @@ import {
   type AuthState,
   type ResetRequestState,
 } from "./actions";
+import { PAGE_MEASURE } from "@/lib/layout";
 
 const initialState: AuthState = { error: null };
 const initialResetState: ResetRequestState = { error: null, sent: false };
@@ -48,7 +49,7 @@ export default function LoginForm({
 
   return (
     <div className="flex flex-1 flex-col" style={{ background: "var(--panel)" }}>
-      <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-7 py-5">
+      <header className={`mx-auto flex w-full ${PAGE_MEASURE} items-center justify-between px-7 py-5`}>
         <Link href="/" className="flex items-center gap-2 font-serif text-[19px]" style={{ color: "var(--ink)" }}>
           <Logo size={26} />
           Trackly
@@ -115,12 +116,18 @@ export default function LoginForm({
                 {mode === "login" ? "Welcome back" : "Let's get started"}
                 <span className="relative inline-block italic" style={{ color: "var(--accent)" }}>
                   .
+                  {/* width/height must keep the viewBox's 60:14 ratio. They
+                      were 60:10, so preserveAspectRatio's default "meet"
+                      scaled the whole squiggle to 71% and centred it, leaving
+                      10px of dead space at each end — it drew 40px of the 60
+                      it reserved and stopped short of the word. */}
                   <svg
                     width="60"
-                    height="10"
+                    height="14"
                     viewBox="0 0 60 14"
-                    style={{ position: "absolute", left: -58, bottom: -6 }}
+                    style={{ position: "absolute", left: -64, bottom: -9 }}
                     fill="none"
+                    aria-hidden="true"
                   >
                     <path
                       d="M2 9C12 3 24 3 34 7C42 10 50 10 58 5"
@@ -254,7 +261,7 @@ export default function LoginForm({
       </div>
 
       <footer
-        className="mx-auto w-full max-w-3xl px-7 pb-8 text-center text-xs"
+        className={`mx-auto w-full ${PAGE_MEASURE} px-7 pb-8 text-center text-xs`}
         style={{ color: "var(--ink-faint)" }}
       >
         <Link href="/privacy" style={{ color: "inherit" }}>
