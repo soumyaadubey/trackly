@@ -52,10 +52,18 @@ export default async function ProfilePage() {
         </h2>
         <p className="mb-4 text-[13px]" style={{ color: "var(--ink-muted)" }}>
           Every opportunity, course, and roadmap you&apos;ve saved, as a CSV.
+          The calendar file holds your live deadlines, each with a reminder the
+          day before &mdash; open it once and they land in whatever calendar you
+          already use.
         </p>
-        <a href="/api/export" className="pill-btn-secondary inline-block text-[13px]">
-          Export as CSV
-        </a>
+        <div className="flex flex-wrap gap-3">
+          <a href="/api/export" className="pill-btn-secondary inline-block text-[13px]">
+            Export as CSV
+          </a>
+          <a href="/api/calendar" className="pill-btn-secondary inline-block text-[13px]">
+            Export deadlines (.ics)
+          </a>
+        </div>
       </div>
 
       <div
