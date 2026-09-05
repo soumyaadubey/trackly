@@ -194,3 +194,7 @@ Configuration**, or password-reset links won't work. Also turn on
 8 to match the client — the app can't enforce either on its own.
 
 </details>
+
+## License
+
+[MIT](./LICENSE). Use it, fork it, ship your own version of it.
