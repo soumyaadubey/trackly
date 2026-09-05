@@ -7,7 +7,7 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import LandingBoard from "@/components/LandingBoard";
 import Logo from "@/components/Logo";
-import { ClockIcon, LinkIcon } from "@/components/icons";
+import { ClockIcon, ExitIcon, LinkIcon } from "@/components/icons";
 
 export default async function RootPage() {
   const user = await getCurrentUser();
@@ -31,13 +31,13 @@ export default async function RootPage() {
   return (
     <div className="flex flex-1 flex-col" style={{ background: "var(--panel)" }}>
       <header className={`mx-auto flex w-full ${PAGE_MEASURE} items-center justify-between px-4 py-5 sm:px-7`}>
-        <div className="flex items-center gap-2 font-serif text-[20px]" style={{ color: "var(--ink)" }}>
+        <div className="flex items-center gap-2 py-1 font-serif text-[20px]" style={{ color: "var(--ink)" }}>
           <Logo size={27} />
           Trackly
         </div>
         <div className="flex items-center gap-2.5 sm:gap-4.5">
           <ThemeToggle />
-          <Link href="/login" className="text-sm font-medium" style={{ color: "var(--ink-muted)" }}>
+          <Link href="/login" className="tap-target text-sm font-medium" style={{ color: "var(--ink-muted)" }}>
             Log in
           </Link>
           <Link href="/login?mode=signup" className="pill-btn-primary text-sm">
@@ -81,7 +81,10 @@ export default async function RootPage() {
           <LandingBoard />
         </div>
 
-        <div className="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+        {/* Three across rather than two: at the wider measure a 2-up grid put the
+            body text at ~72 characters a line, and left the pair looking like a
+            third card had gone missing. */}
+        <div className="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div className="rounded p-7" style={{ background: "var(--paper)", border: "1px solid var(--border)" }}>
             <div className="mb-3 flex items-center gap-2.5">
               <ClockIcon size={20} style={{ color: "var(--accent)", flexShrink: 0 }} />
@@ -108,21 +111,45 @@ export default async function RootPage() {
               app.
             </p>
           </div>
+          <div className="rounded p-7" style={{ background: "var(--paper)", border: "1px solid var(--border)" }}>
+            <div className="mb-3 flex items-center gap-2.5">
+              <ExitIcon size={20} style={{ color: "var(--accent)", flexShrink: 0 }} />
+              <div className="font-serif text-[15px] italic" style={{ color: "var(--accent)" }}>
+                Yours to walk away with
+              </div>
+            </div>
+            <p className="text-[15px] leading-relaxed" style={{ color: "var(--ink-muted)" }}>
+              Everything you save exports as a CSV, or as a calendar file your
+              own calendar can read. No lock-in, and no waiting on support to
+              get your list back.
+            </p>
+          </div>
         </div>
 
+        {/* This block used to repeat the hero's headline and its Sign up
+            button, which made three identical calls to action in one screen.
+            The honest version of a closing pitch is what the product does not
+            do — it is the only thing on the page a competitor's landing page
+            would not also claim. One quiet text link, not a third pill. */}
         <div
-          className="flex flex-col items-start justify-between gap-5 rounded p-9 sm:flex-row sm:items-center"
+          className="rounded p-9"
           style={{ background: "var(--ink)", color: "var(--paper)" }}
         >
-          <div className="font-serif max-w-md text-2xl leading-snug">
-            Add the first one in about fifteen seconds.
+          <div className="font-serif mb-5 max-w-lg text-2xl leading-snug">
+            What Trackly doesn&apos;t do.
           </div>
+          <ul className="mb-6 grid grid-cols-1 gap-x-10 gap-y-3 text-[15px] leading-relaxed sm:grid-cols-2" style={{ color: "var(--paper)", opacity: 0.72 }}>
+            <li>No team features. It&apos;s a list for one person.</li>
+            <li>No reminder emails yet — export to your calendar instead.</li>
+            <li>No AI writing your applications for you.</li>
+            <li>No pricing page, because there&apos;s nothing to sell you.</li>
+          </ul>
           <Link
             href="/login?mode=signup"
-            className="rounded-full px-6.5 py-3.5 text-[15px] font-medium"
-            style={{ background: "var(--paper)", color: "var(--ink)" }}
+            className="tap-target text-[15px] font-medium underline underline-offset-4"
+            style={{ color: "var(--paper)" }}
           >
-            Sign up
+            Start your list →
           </Link>
         </div>
       </main>

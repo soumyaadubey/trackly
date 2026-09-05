@@ -63,6 +63,17 @@ export function LinkIcon({ size = 18, style, className }: IconProps) {
   );
 }
 
+/** A door standing open, with an arrow leaving through it — your data, on its way out. */
+export function ExitIcon({ size = 18, style, className }: IconProps) {
+  return (
+    <svg {...base(size)} style={style} className={className}>
+      <path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4" />
+      <path d="M10 8l4 4-4 4" />
+      <path d="M14 12H4" />
+    </svg>
+  );
+}
+
 export const KIND_ICON: Record<Kind, (props: IconProps) => React.JSX.Element> = {
   opportunity: RocketIcon,
   course: BookIcon,
