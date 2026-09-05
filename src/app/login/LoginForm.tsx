@@ -50,7 +50,7 @@ export default function LoginForm({
   return (
     <div className="flex flex-1 flex-col" style={{ background: "var(--panel)" }}>
       <header className={`mx-auto flex w-full ${PAGE_MEASURE} items-center justify-between px-7 py-5`}>
-        <Link href="/" className="flex items-center gap-2 font-serif text-[19px]" style={{ color: "var(--ink)" }}>
+        <Link href="/" className="flex items-center gap-2 py-1 font-serif text-[19px]" style={{ color: "var(--ink)" }}>
           <Logo size={26} />
           Trackly
         </Link>
@@ -74,7 +74,7 @@ export default function LoginForm({
               <button
                 type="button"
                 onClick={() => setMode("login")}
-                className="font-serif block w-full text-center text-[13px] italic"
+                className="font-serif block w-full py-2 text-center text-[13px] italic"
                 style={{ color: "var(--ink-muted)" }}
               >
                 ← Back to log in
@@ -200,7 +200,7 @@ export default function LoginForm({
               <button
                 type="button"
                 onClick={() => setMode(mode === "login" ? "forgot" : "login")}
-                className="font-serif mt-4 block w-full text-center text-[13px] italic"
+                className="font-serif mt-2 block w-full py-2 text-center text-[13px] italic"
                 style={{ color: "var(--ink-muted)" }}
               >
                 {mode === "login" ? "Forgot your password?" : "Already have an account?"}
@@ -250,7 +250,7 @@ export default function LoginForm({
               <button
                 type="button"
                 onClick={() => setMode("login")}
-                className="font-serif mt-4 block w-full text-center text-[13px] italic"
+                className="font-serif mt-2 block w-full py-2 text-center text-[13px] italic"
                 style={{ color: "var(--ink-muted)" }}
               >
                 ← Back to log in
@@ -264,11 +264,11 @@ export default function LoginForm({
         className={`mx-auto w-full ${PAGE_MEASURE} px-7 pb-8 text-center text-xs`}
         style={{ color: "var(--ink-faint)" }}
       >
-        <Link href="/privacy" style={{ color: "inherit" }}>
+        <Link href="/privacy" className="tap-target" style={{ color: "inherit" }}>
           Privacy
         </Link>
         {" · "}
-        <Link href="/terms" style={{ color: "inherit" }}>
+        <Link href="/terms" className="tap-target" style={{ color: "inherit" }}>
           Terms
         </Link>
       </footer>

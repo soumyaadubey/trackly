@@ -115,18 +115,6 @@ body {
   font-family: var(--font-serif);
 }
 
-/* Ruled-paper sheet: horizontal lines every 36px, offset to align with padding */
-.ruled {
-  background-color: var(--paper);
-  background-image: repeating-linear-gradient(
-    var(--paper),
-    var(--paper) 35px,
-    var(--paper-line) 35px,
-    var(--paper-line) 36px
-  );
-  background-position: 0 24px;
-}
-
 @keyframes nb-overdue {
   0%, 54% { opacity: 1; }
   62%, 92% { opacity: 0.32; }
@@ -385,6 +373,17 @@ body {
 
 /* Footer legal links. The originals had no hover or focus affordance at all —
    they read as plain text until you happened to click one. */
+/* WCAG 2.2 AA (2.5.8 Target Size) wants 24x24 CSS px. These links are 13px
+   text, so the hit area comes from padding, and the negative margin pulls the
+   layout back so nothing moves visually. Grow the target, not the design. */
+.tap-target {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 6px 5px;
+  margin: -6px -5px;
+}
+
 .footer-link {
   transition: color 140ms ease;
 }

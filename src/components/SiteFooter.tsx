@@ -16,10 +16,10 @@ export default function SiteFooter() {
     >
       <span className="font-serif italic">Trackly</span>
       <span className="flex gap-5.5">
-        <Link href="/privacy" className="footer-link">
+        <Link href="/privacy" className="footer-link tap-target">
           Privacy
         </Link>
-        <Link href="/terms" className="footer-link">
+        <Link href="/terms" className="footer-link tap-target">
           Terms
         </Link>
       </span>

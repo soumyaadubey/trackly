@@ -26,7 +26,7 @@ export default async function SiteHeader() {
           <div className="flex items-center gap-7">
             <Link
               href="/"
-              className="flex items-center gap-2 font-serif text-[19px] leading-none"
+              className="flex items-center gap-2 py-1 font-serif text-[19px] leading-none"
               style={{ color: "var(--ink)" }}
             >
               <Logo size={26} />

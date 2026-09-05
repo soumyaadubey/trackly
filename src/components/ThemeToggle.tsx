@@ -13,7 +13,7 @@ export default function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label="Toggle dark mode"
-      className="flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs"
+      className="flex items-center gap-1 rounded-full border px-3 py-2 text-xs"
       style={{ borderColor: "var(--border)", color: "var(--ink-muted)" }}
     >
       <span className="theme-toggle-sun">☀</span>

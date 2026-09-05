@@ -22,7 +22,7 @@ export default function LegalLayout({ children }: LayoutProps<"/">) {
       >
         <Link
           href="/"
-          className="flex items-center gap-2 font-serif text-[19px] leading-none"
+          className="flex items-center gap-2 py-1 font-serif text-[19px] leading-none"
           style={{ color: "var(--ink)" }}
         >
           <Logo size={26} />
@@ -41,8 +41,8 @@ export default function LegalLayout({ children }: LayoutProps<"/">) {
           ← Back to Trackly
         </Link>
         <span className="flex gap-5.5">
-          <Link href="/privacy">Privacy</Link>
-          <Link href="/terms">Terms</Link>
+          <Link href="/privacy" className="footer-link tap-target">Privacy</Link>
+          <Link href="/terms" className="footer-link tap-target">Terms</Link>
         </span>
       </footer>
     </div>
