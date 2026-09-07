@@ -15,7 +15,24 @@ const instrumentSans = Instrument_Sans({
   weight: ["400", "500", "600"],
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+/**
+ * The origin used to build absolute URLs in the page metadata.
+ *
+ * NEXT_PUBLIC_SITE_URL is the answer when it is set. Vercel's own
+ * VERCEL_PROJECT_PRODUCTION_URL is the fallback, because a missing variable
+ * used to mean every shared link advertised an og:image on localhost — a
+ * broken preview card, with nothing in the build output to say so.
+ *
+ * This is deliberately more forgiving than getSiteOrigin() in lib/site.ts,
+ * which throws instead. That one builds password-reset links, where guessing
+ * wrong hands a valid token to the wrong origin; this one picks a preview
+ * image.
+ */
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "http://localhost:3000");
 const DESCRIPTION =
   "Track hackathon applications, courses, and roadmaps in one place.";
 
