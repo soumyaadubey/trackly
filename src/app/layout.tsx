@@ -15,9 +15,38 @@ const instrumentSans = Instrument_Sans({
   weight: ["400", "500", "600"],
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const DESCRIPTION =
+  "Track hackathon applications, courses, and roadmaps in one place.";
+
 export const metadata: Metadata = {
+  // Without this, the relative image path below is emitted as-is and every
+  // scraper that requires an absolute og:image URL — LinkedIn included —
+  // silently renders the link with no preview card at all.
+  metadataBase: new URL(SITE_URL),
   title: "Trackly",
-  description: "Track hackathon applications, courses, and roadmaps in one place.",
+  description: DESCRIPTION,
+  openGraph: {
+    type: "website",
+    siteName: "Trackly",
+    title: "Trackly",
+    description: DESCRIPTION,
+    url: SITE_URL,
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Trackly — a board of upcoming application, course and roadmap deadlines",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Trackly",
+    description: DESCRIPTION,
+    images: ["/og.png"],
+  },
 };
 
 /**

@@ -15,7 +15,17 @@ export default function SiteFooter() {
       style={{ color: "var(--ink-muted)", borderTop: "1px solid var(--border)" }}
     >
       <span className="font-serif italic">Trackly</span>
-      <span className="flex gap-5.5">
+      <span className="flex items-center gap-5.5">
+        {/* rel="noreferrer" alongside noopener: the target is a public repo,
+            but there is no reason to hand it the referring URL either. */}
+        <a
+          href="https://github.com/soumyaadubey/trackly"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="footer-link tap-target"
+        >
+          GitHub
+        </a>
         <Link href="/privacy" className="footer-link tap-target">
           Privacy
         </Link>
