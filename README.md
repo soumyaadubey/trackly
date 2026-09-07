@@ -128,6 +128,23 @@ Load-bearing decisions that shouldn't be "simplified" away:
   styles (design tokens are applied through inline `style` attributes). Removing
   both is what would make the policy genuinely load-bearing.
 
+## What's next
+
+Roughly in the order I would do them:
+
+1. **Sign in with Google.** Removes the password-reset surface entirely, and it
+   is the login a student audience expects. Needs the OAuth callback to handle
+   a `code` exchange, which the current one does not.
+2. **Deadlines with a time and a timezone.** The largest of these, since it is a
+   schema change and touches every date helper.
+3. **A calendar subscription feed** rather than a one-off `.ics` download, so
+   deadlines stay in sync. Needs a per-user secret in the URL and a way to
+   revoke it.
+4. **CSV import**, so there is a migration path in from the spreadsheet most
+   people are using today.
+5. **A sort control and bulk actions**, which is the smallest of these and the
+   most requested by anyone who accumulates more than a screenful of rows.
+
 ## Development
 
 ```bash
