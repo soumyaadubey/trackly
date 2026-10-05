@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  deadlineStatusFilter,
   deadlineUrgency,
   formatDeadline,
+  KIND_CONFIG,
   isKind,
   isStatusForKind,
   daysBetweenDates,
@@ -393,5 +395,31 @@ describe("addDays", () => {
       const target = addDays("2026-09-02", offset);
       expect(daysBetweenDates("2026-09-02", target)).toBe(offset);
     }
+  });
+});
+
+describe("deadline statuses", () => {
+  it("stop counting an opportunity's deadline once it has been applied to", () => {
+    const { deadlineStatuses } = KIND_CONFIG.opportunity;
+    expect(deadlineStatuses).toContain("saved");
+    expect(deadlineStatuses).toContain("applying");
+    expect(deadlineStatuses).not.toContain("applied");
+    expect(deadlineStatuses).not.toContain("interview");
+  });
+
+  it("are always a subset of the kind's active statuses", () => {
+    for (const config of Object.values(KIND_CONFIG)) {
+      for (const status of config.deadlineStatuses) {
+        expect(config.activeStatuses).toContain(status);
+      }
+    }
+  });
+
+  it("filter per kind rather than on the union of statuses", () => {
+    expect(deadlineStatusFilter()).toBe(
+      "and(kind.eq.opportunity,status.in.(saved,applying))," +
+        "and(kind.eq.course,status.in.(saved,in_progress))," +
+        "and(kind.eq.roadmap,status.in.(saved,in_progress))",
+    );
   });
 });

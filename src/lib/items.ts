@@ -6,6 +6,10 @@ type KindConfig = {
   pluralLabel: string;
   statuses: string[];
   activeStatuses: string[];
+  // Statuses where the deadline is still something to act on. Narrower than
+  // activeStatuses for opportunities: once applied, the application deadline
+  // no longer matters even though the opportunity is still live.
+  deadlineStatuses: string[];
   archiveStatuses: string[];
   statusLabels: Record<string, string>;
   statusBadge: Record<string, string>;
@@ -17,6 +21,7 @@ export const KIND_CONFIG: Record<Kind, KindConfig> = {
     pluralLabel: "Opportunities",
     statuses: ["saved", "applying", "applied", "interview", "accepted", "rejected", "ghosted"],
     activeStatuses: ["saved", "applying", "applied", "interview"],
+    deadlineStatuses: ["saved", "applying"],
     archiveStatuses: ["accepted", "rejected", "ghosted"],
     statusLabels: {
       saved: "Saved",
@@ -42,6 +47,7 @@ export const KIND_CONFIG: Record<Kind, KindConfig> = {
     pluralLabel: "Courses",
     statuses: ["saved", "in_progress", "completed", "abandoned"],
     activeStatuses: ["saved", "in_progress"],
+    deadlineStatuses: ["saved", "in_progress"],
     archiveStatuses: ["completed", "abandoned"],
     statusLabels: {
       saved: "Saved",
@@ -61,6 +67,7 @@ export const KIND_CONFIG: Record<Kind, KindConfig> = {
     pluralLabel: "Roadmaps",
     statuses: ["saved", "in_progress", "completed"],
     activeStatuses: ["saved", "in_progress"],
+    deadlineStatuses: ["saved", "in_progress"],
     archiveStatuses: ["completed"],
     statusLabels: {
       saved: "Saved",
@@ -93,6 +100,18 @@ export const KIND_ROUTE: Record<Kind, string> = {
   course: "/courses",
   roadmap: "/roadmaps",
 };
+
+/**
+ * A PostgREST `or` filter matching items whose deadline still needs acting
+ * on, checked per kind. A flat `status in (...)` over the union of statuses
+ * would also match any status shared between kinds, and the dashboard shows
+ * counts from this filter, so it has to be exact.
+ */
+export function deadlineStatusFilter(): string {
+  return KINDS.map(
+    (kind) => `and(kind.eq.${kind},status.in.(${KIND_CONFIG[kind].deadlineStatuses.join(",")}))`,
+  ).join(",");
+}
 
 export function isKind(value: string): value is Kind {
   return (KINDS as readonly string[]).includes(value);

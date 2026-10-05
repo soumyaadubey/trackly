@@ -39,6 +39,14 @@ export default async function ItemsList({ kind, searchParams }: Props) {
       ? rawStatus
       : null;
 
+  // ?due=overdue|upcoming narrows the active view to items whose deadline
+  // still needs acting on — the same rule as the dashboard's sections, which
+  // link here. It means nothing in the archive, so it is ignored there.
+  const due =
+    view === "active" && (searchParams.due === "overdue" || searchParams.due === "upcoming")
+      ? searchParams.due
+      : null;
+
   const q = typeof searchParams.q === "string" ? searchParams.q.trim().slice(0, 200) : "";
   const tagFilter =
     typeof searchParams.tag === "string" && searchParams.tag.trim()
@@ -53,7 +61,9 @@ export default async function ItemsList({ kind, searchParams }: Props) {
   // initial HTML rather than being corrected after hydration.
   const today = await getViewerToday();
 
-  const statusesToQuery = statusFilter ? [statusFilter] : visibleStatuses;
+  const statusesToQuery = (statusFilter ? [statusFilter] : visibleStatuses).filter(
+    (s) => !due || config.deadlineStatuses.includes(s),
+  );
 
   let query = supabase
     .from("items")
@@ -81,6 +91,12 @@ export default async function ItemsList({ kind, searchParams }: Props) {
 
   if (tagFilter) {
     query = query.contains("tags", [tagFilter]);
+  }
+
+  if (due === "overdue") {
+    query = query.lt("deadline", today);
+  } else if (due === "upcoming") {
+    query = query.gte("deadline", today);
   }
 
   query = query.range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1);
@@ -114,7 +130,7 @@ export default async function ItemsList({ kind, searchParams }: Props) {
     reportError("ItemsList.query", error);
   }
 
-  const isFiltered = Boolean(q || statusFilter || tagFilter);
+  const isFiltered = Boolean(q || statusFilter || tagFilter || due);
   const totalPages = Math.max(1, Math.ceil((totalCount ?? 0) / ITEMS_PER_PAGE));
   const outOfRange = (totalCount ?? 0) > 0 && (items?.length ?? 0) === 0;
 
@@ -122,6 +138,7 @@ export default async function ItemsList({ kind, searchParams }: Props) {
     const params = new URLSearchParams();
     params.set("view", view);
     if (statusFilter) params.set("status", statusFilter);
+    if (due) params.set("due", due);
     if (q) params.set("q", q);
     if (tagFilter) params.set("tag", tagFilter);
     if (targetPage > 1) params.set("page", String(targetPage));
@@ -131,6 +148,7 @@ export default async function ItemsList({ kind, searchParams }: Props) {
   function tagHref(tag: string) {
     const params = new URLSearchParams();
     params.set("view", view);
+    if (due) params.set("due", due);
     params.set("tag", tag);
     return `${route}?${params.toString()}`;
   }
@@ -170,6 +188,7 @@ export default async function ItemsList({ kind, searchParams }: Props) {
         >
           <input type="hidden" name="view" value={view} />
           {tagFilter && <input type="hidden" name="tag" value={tagFilter} />}
+          {due && <input type="hidden" name="due" value={due} />}
 
           <label htmlFor="items-search" className="sr-only">
             Search {config.pluralLabel.toLowerCase()}
@@ -205,6 +224,19 @@ export default async function ItemsList({ kind, searchParams }: Props) {
           <button type="submit" className="pill-btn-secondary text-[13px]">
             Filter
           </button>
+
+          {due && (
+            <span className="flex items-center gap-1.5 text-[12px]" style={{ color: "var(--ink-muted)" }}>
+              {due === "overdue" ? "Overdue only" : "Upcoming only"}
+              <Link
+                href={`${route}?view=${view}`}
+                className="row-action"
+                aria-label={`Show all active ${config.pluralLabel.toLowerCase()}, not just ${due} ones`}
+              >
+                Clear
+              </Link>
+            </span>
+          )}
 
           {tagFilter && (
             <span className="flex items-center gap-1.5 text-[12px]" style={{ color: "var(--ink-muted)" }}>
