@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
+  deadlineIsActionable,
   ITEMS_PER_PAGE,
   KIND_CONFIG,
   KIND_ROUTE,
@@ -356,7 +357,12 @@ export default async function ItemsList({ kind, searchParams }: Props) {
 
                     <div className="sm:w-[110px] sm:text-right">
                       {item.deadline ? (
-                        <DeadlineBadge deadline={item.deadline} today={today} showDate />
+                        <DeadlineBadge
+                          deadline={item.deadline}
+                          today={today}
+                          showDate
+                          actionable={deadlineIsActionable(kind, item.status)}
+                        />
                       ) : (
                         <span className="text-[13px]" style={{ color: "var(--ink-faintest)" }}>
                           No deadline

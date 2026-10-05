@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  deadlineIsActionable,
   deadlineStatusFilter,
   deadlineUrgency,
   formatDeadline,
@@ -413,6 +414,15 @@ describe("deadline statuses", () => {
         expect(config.activeStatuses).toContain(status);
       }
     }
+  });
+
+  it("make an applied or finished item's deadline a plain date", () => {
+    expect(deadlineIsActionable("opportunity", "saved")).toBe(true);
+    expect(deadlineIsActionable("opportunity", "applying")).toBe(true);
+    expect(deadlineIsActionable("opportunity", "applied")).toBe(false);
+    expect(deadlineIsActionable("opportunity", "rejected")).toBe(false);
+    expect(deadlineIsActionable("course", "in_progress")).toBe(true);
+    expect(deadlineIsActionable("course", "completed")).toBe(false);
   });
 
   it("filter per kind rather than on the union of statuses", () => {

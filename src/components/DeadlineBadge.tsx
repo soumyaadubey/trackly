@@ -27,10 +27,13 @@ export default function DeadlineBadge({
   deadline,
   today,
   showDate = false,
+  actionable = true,
 }: {
   deadline: string;
   today: string;
   showDate?: boolean;
+  /** False once the deadline no longer needs acting on (e.g. already applied): shown as a plain date. */
+  actionable?: boolean;
 }) {
   // Hydrates with the server's answer, then reads the real local date. Both
   // snapshots are plain strings compared with Object.is, so when they match —
@@ -42,7 +45,7 @@ export default function DeadlineBadge({
     () => today,
   );
 
-  const urgency = deadlineUrgency(deadline, effectiveToday);
+  const urgency = actionable ? deadlineUrgency(deadline, effectiveToday) : "normal";
   const label = formatDeadline(deadline, urgency, effectiveToday);
 
   return (

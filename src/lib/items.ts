@@ -113,6 +113,15 @@ export function deadlineStatusFilter(): string {
   ).join(",");
 }
 
+/**
+ * Whether an item's deadline is still something to act on. Once an
+ * opportunity is applied to (or anything is finished), its deadline is just a
+ * date: it must not be shown as overdue or due soon.
+ */
+export function deadlineIsActionable(kind: Kind, status: string): boolean {
+  return KIND_CONFIG[kind].deadlineStatuses.includes(status);
+}
+
 export function isKind(value: string): value is Kind {
   return (KINDS as readonly string[]).includes(value);
 }
