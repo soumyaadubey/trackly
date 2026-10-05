@@ -14,8 +14,9 @@ Use a new Supabase development/test project before a production rollout. In orde
 apply [0001](../supabase/migrations/0001_init.sql),
 [0002](../supabase/migrations/0002_hardening.sql),
 [0003](../supabase/migrations/0003_account_deletion.sql),
-[0004](../supabase/migrations/0004_item_url_scheme.sql), and
-[0005](../supabase/migrations/0005_avatar_slots.sql). Record each applied file
+[0004](../supabase/migrations/0004_item_url_scheme.sql),
+[0005](../supabase/migrations/0005_avatar_slots.sql), and
+[0006](../supabase/migrations/0006_item_next_step.sql). Record each applied file
 and its revision; a manual SQL Editor run is not automatically a CLI migration log.
 Keep the project private until the full sequence and configuration are complete.
 

@@ -24,11 +24,12 @@ export async function readExportItems(
 
   while (true) {
     let query = supabase.from("items")
-      .select("id,user_id,kind,title,url,status,tags,deadline,notes,created_at,updated_at", { count: "exact" })
+      .select("id,user_id,kind,title,url,status,tags,deadline,notes,next_step,next_step_date,created_at,updated_at", { count: "exact" })
       .eq("user_id", userId)
       .order("id", { ascending: true })
       .limit(BATCH_SIZE);
-    if (calendar) query = query.not("deadline", "is", null).in("status", activeStatuses);
+    // Anything dated: a deadline, a next step, or both.
+    if (calendar) query = query.or("deadline.not.is.null,next_step_date.not.is.null").in("status", activeStatuses);
     if (cursor) query = query.gt("id", cursor);
     const { data, error, count } = await query.returns<Item[]>();
     if (error) throw error;

@@ -168,3 +168,13 @@ describe("buildCalendar", () => {
     ]);
   });
 });
+
+describe("next-step events", () => {
+  it("are separate events with their own stable UID and a labelled summary", () => {
+    const lines = logicalLines(buildCalendar([item(), item({ deadline: "2026-10-14", event: "Interview" })], NOW));
+    expect(lines).toContain("UID:11111111-2222-3333-4444-555555555555@trackly");
+    expect(lines).toContain("UID:11111111-2222-3333-4444-555555555555-next@trackly");
+    expect(lines).toContain("SUMMARY:MLH Fellowship — Interview");
+    expect(lines).toContain("DTSTART;VALUE=DATE:20261014");
+  });
+});

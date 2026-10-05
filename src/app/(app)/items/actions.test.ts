@@ -10,7 +10,7 @@ import type { RestorableItem } from "@/lib/items";
 const snapshot: RestorableItem = {
   id: "11111111-1111-4111-8111-111111111111", kind: "course", title: "Updated in another tab",
   url: "https://example.com", status: "in_progress", deadline: null, notes: "Latest notes",
-  tags: ["a,b", "日本語"], created_at: "2025-01-01T00:00:00Z", updated_at: "2026-09-01T00:00:00Z",
+  tags: ["a,b", "日本語"], next_step: null, next_step_date: null, created_at: "2025-01-01T00:00:00Z", updated_at: "2026-09-01T00:00:00Z",
 };
 beforeEach(() => {
   vi.resetAllMocks();

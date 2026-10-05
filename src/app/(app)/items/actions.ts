@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireUserClient } from "@/lib/auth";
 import { userMessage } from "@/lib/errors";
-import { isKind, isStatusForKind, parseItemForm, KIND_ROUTE, type Kind, type RestorableItem } from "@/lib/items";
+import { isKind, isNextStep, isStatusForKind, isValidDate, parseItemForm, KIND_ROUTE, type Kind, type RestorableItem } from "@/lib/items";
 
 export type SaveState = { error: string | null };
 
@@ -174,7 +174,13 @@ export async function restoreItem(item: RestorableItem): Promise<SaveState> {
   // The snapshot comes back from the browser, so its link is not trusted: it
   // must be http(s). Only the scheme is checked, not the full parseHttpUrl
   // rule, because rows saved before that rule existed must still come back.
-  if (!item || !isKind(item.kind) || !isStatusForKind(item.kind, item.status) ||
+  // Snapshots taken before next steps existed carry neither field.
+  const nextStep = item?.next_step ?? null;
+  const nextStepDate = item?.next_step_date ?? null;
+  const nextStepOk = nextStep === null
+    ? nextStepDate === null
+    : isNextStep(nextStep) && typeof nextStepDate === "string" && isValidDate(nextStepDate);
+  if (!item || !isKind(item.kind) || !isStatusForKind(item.kind, item.status) || !nextStepOk ||
       typeof item.url !== "string" || !/^https?:\/\//i.test(item.url) ||
       typeof item.created_at !== "string" || !Number.isFinite(Date.parse(item.created_at)) ||
       typeof item.updated_at !== "string" || !Number.isFinite(Date.parse(item.updated_at))) {
@@ -193,6 +199,8 @@ export async function restoreItem(item: RestorableItem): Promise<SaveState> {
     tags: item.tags,
     deadline: item.deadline,
     notes: item.notes,
+    next_step: nextStep,
+    next_step_date: nextStepDate,
     created_at: item.created_at,
     updated_at: item.updated_at,
   });

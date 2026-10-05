@@ -439,3 +439,34 @@ describe("deadline statuses", () => {
     );
   });
 });
+
+describe("parseItemForm next step", () => {
+  const base = { title: "Google STEP", url: "example.com", status: "applied", tags: "" };
+  const form = (fields: Record<string, string>) => {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries({ ...base, ...fields })) fd.set(k, v);
+    return fd;
+  };
+
+  it("stores a next step as a type and a date together", () => {
+    const result = parseItemForm(form({ next_step: "interview", next_step_date: "2026-10-14" }), "opportunity");
+    expect(result.ok && result.fields.next_step).toBe("interview");
+    expect(result.ok && result.fields.next_step_date).toBe("2026-10-14");
+  });
+
+  it("treats both empty as no next step", () => {
+    const result = parseItemForm(form({}), "opportunity");
+    expect(result.ok && [result.fields.next_step, result.fields.next_step_date]).toEqual([null, null]);
+  });
+
+  it.each([
+    [{ next_step: "interview" }, /both a type and a date/],
+    [{ next_step_date: "2026-10-14" }, /both a type and a date/],
+    [{ next_step: "party", next_step_date: "2026-10-14" }, /Invalid next step/],
+    [{ next_step: "result", next_step_date: "2026-02-30" }, /valid date/],
+  ])("rejects %o", (fields, message) => {
+    const result = parseItemForm(form(fields), "opportunity");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(message);
+  });
+});

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { reportError } from "@/lib/errors";
 import { buildCalendar, type IcsItem } from "@/lib/ics";
-import { KIND_CONFIG, type Item } from "@/lib/items";
+import { KIND_CONFIG, NEXT_STEP_LABELS, type Item } from "@/lib/items";
 import { ExportTooLargeError, readExportItems } from "@/lib/export-items";
 
 /**
@@ -31,7 +31,7 @@ export async function GET() {
   let items: Item[];
   try {
     items = await readExportItems(supabase, user.id, true);
-    items.sort((a, b) => (a.deadline ?? "").localeCompare(b.deadline ?? "") || a.id.localeCompare(b.id));
+
   } catch (error) {
     if (error instanceof ExportTooLargeError) {
       return NextResponse.json({ error: error.message }, { status: 413 });
@@ -43,17 +43,19 @@ export async function GET() {
     );
   }
 
+  // One event per date: the deadline and, separately, the next step.
   const events: IcsItem[] = (items ?? [])
     .filter((item) => KIND_CONFIG[item.kind].activeStatuses.includes(item.status))
-    .map((item) => ({
-      id: item.id,
-      kind: item.kind,
-      title: item.title,
-      status: item.status,
-      deadline: item.deadline!,
-      url: item.url,
-      notes: item.notes,
-    }));
+    .flatMap((item): IcsItem[] => {
+      const base = { id: item.id, kind: item.kind, title: item.title, status: item.status, url: item.url, notes: item.notes };
+      return [
+        ...(item.deadline ? [{ ...base, deadline: item.deadline }] : []),
+        ...(item.next_step && item.next_step_date
+          ? [{ ...base, deadline: item.next_step_date, event: NEXT_STEP_LABELS[item.next_step] }]
+          : []),
+      ];
+    })
+    .sort((a, b) => a.deadline.localeCompare(b.deadline) || a.id.localeCompare(b.id) || (a.event ? 1 : -1));
 
   const date = new Date().toISOString().slice(0, 10);
 

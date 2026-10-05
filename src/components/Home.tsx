@@ -1,6 +1,16 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { deadlineStatusFilter, KIND_CONFIG, KIND_ROUTE, KINDS, type Item, type Kind } from "@/lib/items";
+import {
+  activeStatusFilter,
+  deadlineStatusFilter,
+  KIND_CONFIG,
+  KIND_ROUTE,
+  KINDS,
+  NEXT_STEP_LABELS,
+  type Item,
+  type Kind,
+  type NextStep,
+} from "@/lib/items";
 import { reportError } from "@/lib/errors";
 import DeadlineBadge from "@/components/DeadlineBadge";
 import { getViewerToday } from "@/lib/viewer-date";
@@ -174,9 +184,12 @@ export default async function Home({ name }: { name: string }) {
 
 type Due = "overdue" | "upcoming";
 
+/** One dated thing to show: an item's deadline, or its next step. */
+type Entry = { item: Item; date: string; step: NextStep | null };
+
 type Section = {
   due: Due;
-  items: Item[];
+  entries: Entry[];
   /** Exact per-kind totals, so "N more" can link to each kind's filtered list. */
   perKind: Record<Kind, number>;
   total: number;
@@ -184,46 +197,66 @@ type Section = {
 };
 
 /**
- * One dashboard section: the first few rows across every kind, plus an exact
- * count per kind. Only items whose deadline still needs acting on count (see
- * deadlineStatuses), and the status filter has to happen in the query:
- * fetching the soonest deadlines and filtering afterwards meant a user whose
- * next few deadlines were all completed or rejected saw an empty list while
- * live deadlines sat just outside the window.
+ * One dashboard section: the first few dated entries across every kind, plus
+ * an exact count of items per kind.
+ *
+ * An entry is either an item's deadline, while that still needs acting on
+ * (deadlineStatuses), or its next step, while the item is live (an interview
+ * after applying). The status filters have to happen in the query: fetching
+ * the soonest dates and filtering afterwards meant a user whose next few
+ * deadlines were all completed or rejected saw an empty list while live
+ * deadlines sat just outside the window.
  */
 async function loadSection(
   supabase: Awaited<ReturnType<typeof createClient>>,
   due: Due,
   today: string,
 ): Promise<Section> {
+  const op = due === "overdue" ? "lt" : "gte";
   const byDate = <Q extends { lt: (c: string, v: string) => Q; gte: (c: string, v: string) => Q }>(
+    column: string,
     query: Q,
-  ) => (due === "overdue" ? query.lt("deadline", today) : query.gte("deadline", today));
+  ) => (due === "overdue" ? query.lt(column, today) : query.gte(column, today));
+  // Overdue: most recently missed first, since those are still worth chasing.
+  // Upcoming: soonest first.
+  const ascending = due === "upcoming";
 
-  const [rows, ...kindCounts] = await Promise.all([
-    byDate(supabase.from("items").select("*").or(deadlineStatusFilter()))
-      // Overdue: most recently missed first, since those are still worth
-      // chasing. Upcoming: soonest first.
-      .order("deadline", { ascending: due === "upcoming" })
+  const [deadlineRows, stepRows, ...kindCounts] = await Promise.all([
+    byDate("deadline", supabase.from("items").select("*").or(deadlineStatusFilter()))
+      .order("deadline", { ascending })
       .order("id", { ascending: true })
       .limit(SECTION_LIMIT)
       .returns<Item[]>(),
-    ...KINDS.map((kind) =>
-      byDate(
-        supabase
-          .from("items")
-          // Exact for the same reason as the kind cards above.
-          .select("id", { count: "exact", head: true })
-          .eq("kind", kind)
-          .in("status", KIND_CONFIG[kind].deadlineStatuses),
-      ),
-    ),
+    byDate("next_step_date", supabase.from("items").select("*").or(activeStatusFilter()))
+      .order("next_step_date", { ascending })
+      .order("id", { ascending: true })
+      .limit(SECTION_LIMIT)
+      .returns<Item[]>(),
+    ...KINDS.map((kind) => {
+      const { deadlineStatuses, activeStatuses } = KIND_CONFIG[kind];
+      return supabase
+        .from("items")
+        // Exact for the same reason as the kind cards above.
+        .select("id", { count: "exact", head: true })
+        .eq("kind", kind)
+        .or(
+          `and(status.in.(${deadlineStatuses.join(",")}),deadline.${op}.${today}),` +
+            `and(status.in.(${activeStatuses.join(",")}),next_step_date.${op}.${today})`,
+        );
+    }),
   ]);
 
-  const failed = [rows, ...kindCounts].find((result) => result.error);
+  const failed = [deadlineRows, stepRows, ...kindCounts].find((result) => result.error);
   if (failed?.error) {
     reportError(`Home.${due}`, failed.error);
   }
+
+  const entries: Entry[] = [
+    ...(deadlineRows.data ?? []).map((item) => ({ item, date: item.deadline!, step: null })),
+    ...(stepRows.data ?? []).map((item) => ({ item, date: item.next_step_date!, step: item.next_step })),
+  ]
+    .sort((a, b) => (ascending ? 1 : -1) * a.date.localeCompare(b.date) || a.item.id.localeCompare(b.item.id))
+    .slice(0, SECTION_LIMIT);
 
   const perKind = Object.fromEntries(
     KINDS.map((kind, i) => [kind, kindCounts[i].count ?? 0]),
@@ -231,7 +264,7 @@ async function loadSection(
 
   return {
     due,
-    items: rows.data ?? [],
+    entries,
     perKind,
     total: KINDS.reduce((sum, kind) => sum + perKind[kind], 0),
     error: Boolean(failed),
@@ -249,12 +282,13 @@ function DeadlineSection({
   today: string;
   empty?: string;
 }) {
-  const { due, items, perKind, total, error } = section;
-  // What is left over per kind once the shown rows are taken out, each linking
-  // to that kind's list filtered the same way.
+  const { due, entries, perKind, total, error } = section;
+  // Items left over per kind once the shown ones are taken out (an item can
+  // show twice: deadline and next step), each linking to that kind's list
+  // filtered the same way.
   const remaining = KINDS.map((kind) => ({
     kind,
-    count: perKind[kind] - items.filter((item) => item.kind === kind).length,
+    count: perKind[kind] - new Set(entries.filter((e) => e.item.kind === kind).map((e) => e.item.id)).size,
   })).filter(({ count }) => count > 0);
 
   return (
@@ -269,17 +303,17 @@ function DeadlineSection({
         <p className="px-6.5 pb-4 text-[14px]" style={{ color: "var(--danger)" }}>
           Couldn&apos;t load {due} deadlines.
         </p>
-      ) : items.length === 0 ? (
+      ) : entries.length === 0 ? (
         <p className="px-6.5 pb-4 text-[14px]" style={{ color: "var(--ink-faint)" }}>
           {empty}
         </p>
       ) : (
         <ul>
-          {items.map((item) => {
+          {entries.map(({ item, date, step }) => {
             const Icon = KIND_ICON[item.kind];
             return (
               <li
-                key={item.id}
+                key={`${item.id}-${step ?? "deadline"}`}
                 className="row-hover flex items-center gap-3.5 px-6.5 py-3.5"
                 style={{ borderBottom: "1px solid var(--border-soft)" }}
               >
@@ -301,10 +335,11 @@ function DeadlineSection({
                       can never be displaced by a long one. */}
                   <div className="text-[11px]" style={{ color: "var(--ink-faint)" }}>
                     {KIND_CONFIG[item.kind].label}
+                    {step && ` · ${NEXT_STEP_LABELS[step]}`}
                   </div>
                 </div>
                 <div className="shrink-0 whitespace-nowrap text-[13px]">
-                  <DeadlineBadge deadline={item.deadline!} today={today} />
+                  <DeadlineBadge deadline={date} today={today} />
                 </div>
               </li>
             );

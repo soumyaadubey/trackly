@@ -16,6 +16,8 @@ export type IcsItem = {
   deadline: string;
   url: string | null;
   notes: string | null;
+  /** Set for an item's next step (e.g. "Interview"); unset for its deadline. */
+  event?: string;
 };
 
 const encoder = new TextEncoder();
@@ -117,11 +119,12 @@ export function buildCalendar(items: IcsItem[], now: Date = new Date()): string 
       "BEGIN:VEVENT",
       // Stable per item, so re-importing updates the existing event instead of
       // leaving the calendar with a second copy of every deadline.
-      `UID:${item.id}@trackly`,
+      // A next step is a second event per item, with its own stable UID.
+      `UID:${item.id}${item.event ? "-next" : ""}@trackly`,
       `DTSTAMP:${stamp}`,
       `DTSTART;VALUE=DATE:${compactDate(item.deadline)}`,
       `DTEND;VALUE=DATE:${compactDate(addDays(item.deadline, 1))}`,
-      `SUMMARY:${icsEscape(item.title)}`,
+      `SUMMARY:${icsEscape(item.event ? `${item.title} — ${item.event}` : item.title)}`,
       `DESCRIPTION:${icsEscape(description)}`,
       `CATEGORIES:${icsEscape(config.label)}`,
       // A deadline is not an appointment — it should not make the day look busy.

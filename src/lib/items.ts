@@ -122,6 +122,17 @@ export function deadlineIsActionable(kind: Kind, status: string): boolean {
   return KIND_CONFIG[kind].deadlineStatuses.includes(status);
 }
 
+/**
+ * PostgREST `or` filter: items still live for their kind (its active
+ * statuses). A next step counts while the item is live, even after the
+ * application deadline stopped mattering.
+ */
+export function activeStatusFilter(): string {
+  return KINDS.map(
+    (kind) => `and(kind.eq.${kind},status.in.(${KIND_CONFIG[kind].activeStatuses.join(",")}))`,
+  ).join(",");
+}
+
 export function isKind(value: string): value is Kind {
   return (KINDS as readonly string[]).includes(value);
 }
@@ -136,9 +147,25 @@ export type Item = {
   tags: string[];
   deadline: string | null;
   notes: string | null;
+  /** What happens next once applied (an interview, a result date), with its date. Both or neither. */
+  next_step: NextStep | null;
+  next_step_date: string | null;
   created_at: string;
   updated_at: string;
 };
+
+export const NEXT_STEPS = ["interview", "follow_up", "result", "other"] as const;
+export type NextStep = (typeof NEXT_STEPS)[number];
+export const NEXT_STEP_LABELS: Record<NextStep, string> = {
+  interview: "Interview",
+  follow_up: "Follow-up",
+  result: "Result",
+  other: "Next step",
+};
+
+export function isNextStep(value: unknown): value is NextStep {
+  return typeof value === "string" && (NEXT_STEPS as readonly string[]).includes(value);
+}
 
 export function isStatusForKind(kind: Kind, value: string): boolean {
   return KIND_CONFIG[kind].statuses.includes(value);
@@ -166,6 +193,8 @@ export type ItemFields = {
   deadline: string | null;
   notes: string | null;
   tags: string[];
+  next_step: NextStep | null;
+  next_step_date: string | null;
 };
 
 /**
@@ -184,6 +213,8 @@ export function parseItemForm(
   const deadline = String(formData.get("deadline") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
   const tags = parseTags(formData.get("tags"));
+  const rawStep = String(formData.get("next_step") ?? "").trim();
+  const nextStepDate = String(formData.get("next_step_date") ?? "").trim() || null;
 
   if (!title || !rawUrl) {
     return { ok: false, error: "Title and URL are required." };
@@ -208,8 +239,22 @@ export function parseItemForm(
   if (deadline !== null && !isValidDate(deadline)) {
     return { ok: false, error: "That deadline isn't a valid date." };
   }
+  // A next step is a type and a date together; the database enforces the pair.
+  if (rawStep && !isNextStep(rawStep)) {
+    return { ok: false, error: "Invalid next step." };
+  }
+  const nextStep = rawStep ? (rawStep as NextStep) : null;
+  if ((nextStep === null) !== (nextStepDate === null)) {
+    return { ok: false, error: "Give the next step both a type and a date, or leave both empty." };
+  }
+  if (nextStepDate !== null && !isValidDate(nextStepDate)) {
+    return { ok: false, error: "That next-step date isn't a valid date." };
+  }
 
-  return { ok: true, fields: { title, url, status, deadline, notes, tags } };
+  return {
+    ok: true,
+    fields: { title, url, status, deadline, notes, tags, next_step: nextStep, next_step_date: nextStepDate },
+  };
 }
 
 /** A `<input type="date">` value: YYYY-MM-DD, and a date that actually exists. */

@@ -7,7 +7,7 @@ function fixture(size: number, cap = 200) {
   const rows: Item[] = Array.from({ length: size }, (_, i) => ({
     id: String(i + 1).padStart(36, "0"), user_id: "owner", kind: "opportunity",
     title: `Item ${i}`, url: "https://example.com", status: "saved", tags: [],
-    deadline: "2026-10-01", notes: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
+    deadline: "2026-10-01", notes: null, next_step: null, next_step_date: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
   }));
   let calls = 0;
   let failureAt = 0;
@@ -22,13 +22,13 @@ function fixture(size: number, cap = 200) {
       eq: vi.fn((_key: string, value: string) => { owner = value; return query; }),
       order: vi.fn(() => query), limit: vi.fn(() => query),
       gt: vi.fn((_key: string, value: string) => { cursor = value; return query; }),
-      not: vi.fn(() => { calendar = true; return query; }),
+      or: vi.fn(() => { calendar = true; return query; }),
       in: vi.fn((_key: string, value: string[]) => { statuses = value; return query; }),
       returns: async () => {
         calls++;
         if (calls === failureAt) return { data: null, count: null, error: new Error("database offline") };
         const matching = rows.filter((row) => row.user_id === owner && row.id > cursor &&
-          (!calendar || (row.deadline !== null && statuses.includes(row.status))));
+          (!calendar || ((row.deadline !== null || row.next_step_date !== null) && statuses.includes(row.status))));
         return { data: matching.slice(0, cap), count: matching.length + (calls === changeCountAt ? 1 : 0), error: null };
       },
     };
@@ -51,6 +51,7 @@ describe("complete exports", () => {
     f.rows[0].user_id = "other";
     f.rows[1].status = "rejected";
     f.rows[2].deadline = null;
+    Object.assign(f.rows[3], { deadline: null, next_step: "interview", next_step_date: "2026-11-01" });
     const rows = await readExportItems(f.client, "owner", true);
     expect(rows).toEqual(f.rows.slice(3));
   });

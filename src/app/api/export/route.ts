@@ -54,7 +54,7 @@ export async function GET() {
     );
   }
 
-  const header = ["kind", "title", "url", "status", "deadline", "tags", "notes", "created_at"];
+  const header = ["kind", "title", "url", "status", "deadline", "tags", "notes", "created_at", "next_step", "next_step_date"];
   const rows = (items ?? []).map((item) =>
     [
       item.kind,
@@ -65,6 +65,8 @@ export async function GET() {
       item.tags.join("; "),
       item.notes ?? "",
       item.created_at,
+      item.next_step ?? "",
+      item.next_step_date ?? "",
     ]
       .map((v) => csvEscape(String(v)))
       .join(","),

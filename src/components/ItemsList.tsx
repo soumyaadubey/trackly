@@ -8,6 +8,7 @@ import {
   KIND_CONFIG,
   KIND_ROUTE,
   MAX_TAG_LENGTH,
+  NEXT_STEP_LABELS,
   type Item,
   type Kind,
 } from "@/lib/items";
@@ -64,9 +65,7 @@ export default async function ItemsList({ kind, searchParams }: Props) {
   // initial HTML rather than being corrected after hydration.
   const today = await getViewerToday();
 
-  const statusesToQuery = (statusFilter ? [statusFilter] : visibleStatuses).filter(
-    (s) => !due || config.deadlineStatuses.includes(s),
-  );
+  const statusesToQuery = statusFilter ? [statusFilter] : visibleStatuses;
 
   let query = supabase
     .from("items")
@@ -97,10 +96,17 @@ export default async function ItemsList({ kind, searchParams }: Props) {
     query = query.contains("tags", [tagFilter]);
   }
 
-  if (due === "overdue") {
-    query = query.lt("deadline", today);
-  } else if (due === "upcoming") {
-    query = query.gte("deadline", today);
+  // Same rule as the dashboard: a deadline counts while it still needs acting
+  // on (deadlineStatuses); a next step counts while the item is live, which
+  // the active view already guarantees.
+  if (due) {
+    const op = due === "overdue" ? "lt" : "gte";
+    const deadlineStatuses = statusesToQuery.filter((s) => config.deadlineStatuses.includes(s));
+    const conditions = [`next_step_date.${op}.${today}`];
+    if (deadlineStatuses.length > 0) {
+      conditions.unshift(`and(status.in.(${deadlineStatuses.join(",")}),deadline.${op}.${today})`);
+    }
+    query = query.or(conditions.join(","));
   }
 
   query = query.range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1);
@@ -443,7 +449,7 @@ export default async function ItemsList({ kind, searchParams }: Props) {
                   <div className="flex flex-wrap items-center justify-between gap-3 sm:contents">
                     <StatusSelect id={item.id} kind={kind} status={item.status} />
 
-                    <div className="sm:w-[110px] sm:text-right">
+                    <div className="sm:w-[150px] sm:text-right">
                       {item.deadline ? (
                         <DeadlineBadge
                           deadline={item.deadline}
@@ -455,6 +461,16 @@ export default async function ItemsList({ kind, searchParams }: Props) {
                         <span className="text-[13px]" style={{ color: "var(--ink-faintest)" }}>
                           No deadline
                         </span>
+                      )}
+                      {item.next_step && item.next_step_date && (
+                        <div className="mt-1.5">
+                          <DeadlineBadge
+                            deadline={item.next_step_date}
+                            today={today}
+                            label={NEXT_STEP_LABELS[item.next_step]}
+                            actionable={config.activeStatuses.includes(item.status)}
+                          />
+                        </div>
                       )}
                     </div>
 

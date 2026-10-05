@@ -40,7 +40,7 @@ export function createItemsFixture() {
         id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`,
         user_id: owner, kind: "opportunity", title: `Pagination ${String(i + 1).padStart(4, "0")}`,
         url: "https://example.com", status: "saved", tags: ["fixture"],
-        deadline: i < 13 ? "2026-12-01" : null, notes: "Saved notes",
+        deadline: i < 13 ? "2026-12-01" : null, notes: "Saved notes", next_step: null, next_step_date: null,
         created_at: timestamp, updated_at: timestamp,
       }));
       reads = 0; failReadAt = 0;
@@ -366,4 +366,53 @@ export async function checkEmptyStates(page, fixture, owner, origin) {
   assert.equal(await page.getByRole("link", { name: "Clear filter" }).getAttribute("href"), "/opportunities?view=archive");
   fixture.seed(owner, 0);
   console.log("PASS distinct first-use, empty archive, all-archived, nothing-due and no-results states; clearing keeps the tab");
+}
+
+// An applied opportunity's past deadline drops out, but its next step shows
+// on the dashboard, the list, the due filter, the calendar and the CSV, and
+// can be changed from the edit form.
+export async function checkNextSteps(page, fixture, owner, origin) {
+  const day = (offset) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+  fixture.seed(owner, 2);
+  const [applied, saved] = fixture.rows;
+  Object.assign(applied, { title: "Google STEP", status: "applied", deadline: day(-4), next_step: "interview", next_step_date: day(3) });
+  Object.assign(saved, { title: "No dates yet", deadline: null });
+
+  await page.goto(`${origin}/`, { waitUntil: "networkidle" });
+  const upcoming = page.locator("section").filter({ has: page.getByRole("heading", { name: /Upcoming/ }) });
+  await upcoming.getByText("Opportunity · Interview").waitFor();
+  assert.equal(await upcoming.getByText("In 3 days").count(), 1);
+  assert.equal(await page.getByRole("heading", { name: /Overdue/ }).count(), 0);
+  if (process.env.TRACKLY_SCREENSHOTS) await page.screenshot({ path: ".next/test-artifacts/screens/next-step-home.png" });
+
+  await page.goto(`${origin}/opportunities?view=active&due=upcoming`, { waitUntil: "networkidle" });
+  await page.getByText("Interview · In 3 days").waitFor();
+  assert.equal(await page.getByRole("link", { name: "No dates yet", exact: true }).count(), 0);
+  if (process.env.TRACKLY_SCREENSHOTS) await page.screenshot({ path: ".next/test-artifacts/screens/next-step-list.png" });
+
+  const calendar = await (await page.request.get(`${origin}/api/calendar`)).text();
+  assert.ok(calendar.includes("SUMMARY:Google STEP — Interview"));
+  assert.ok(calendar.includes(`UID:${applied.id}-next@trackly`));
+  const csv = await (await page.request.get(`${origin}/api/export`)).text();
+  assert.ok(csv.split("\r\n")[0].endsWith("next_step,next_step_date"));
+  assert.ok(csv.includes(`interview,${day(3)}`));
+
+  await page.goto(`${origin}/items/${applied.id}/edit`, { waitUntil: "networkidle" });
+  assert.equal(await page.getByLabel("Next step", { exact: false }).first().inputValue(), "interview");
+  await page.getByLabel("Next step (optional)").selectOption("result");
+  await page.getByLabel("Next step date").fill(day(20));
+  await page.locator("form button[type=submit]").last().click();
+  await page.waitForURL(`${origin}/opportunities`);
+  assert.equal(applied.next_step, "result");
+  assert.equal(applied.next_step_date, day(20));
+
+  await page.goto(`${origin}/items/${applied.id}/edit`, { waitUntil: "networkidle" });
+  await page.getByLabel("Next step (optional)").selectOption("");
+  assert.equal(await page.getByLabel("Next step date").isDisabled(), true);
+  await page.locator("form button[type=submit]").last().click();
+  await page.waitForURL(`${origin}/opportunities`);
+  assert.equal(applied.next_step, null);
+  assert.equal(applied.next_step_date, null);
+  fixture.seed(owner, 0);
+  console.log("PASS next steps on the dashboard, list, due filter, calendar and CSV, and edited or cleared from the form");
 }

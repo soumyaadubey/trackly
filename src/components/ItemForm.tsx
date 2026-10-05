@@ -9,6 +9,8 @@ import {
   MAX_TAGS,
   MAX_TAG_LENGTH,
   MAX_TITLE_LENGTH,
+  NEXT_STEP_LABELS,
+  NEXT_STEPS,
   parseHttpUrl,
   type Item,
   type Kind,
@@ -35,6 +37,8 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
   const [status, setStatus] = useState(initial?.status ?? "saved");
   const [deadline, setDeadline] = useState(initial?.deadline ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [nextStep, setNextStep] = useState<string>(initial?.next_step ?? "");
+  const [nextStepDate, setNextStepDate] = useState(initial?.next_step_date ?? "");
   const [tagInput, setTagInput] = useState("");
   const [fetchingTitle, setFetchingTitle] = useState(false);
   const [autofillError, setAutofillError] = useState<string | null>(null);
@@ -258,6 +262,50 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
             />
           </div>
         </div>
+
+        {/* Opportunities only: once applied, the application deadline is done
+            but the interview or result date still matters. */}
+        {kind === "opportunity" && (
+          <div className="grid grid-cols-1 gap-4.5 sm:grid-cols-2">
+            <div>
+              <label htmlFor="next_step" className="field-label block">
+                Next step <span style={{ color: "var(--ink-faint)" }}>(optional)</span>
+              </label>
+              <select
+                id="next_step"
+                name="next_step"
+                value={nextStep}
+                onChange={(e) => {
+                  setNextStep(e.target.value);
+                  if (!e.target.value) setNextStepDate("");
+                }}
+                className="field-input"
+              >
+                <option value="">None</option>
+                {NEXT_STEPS.map((step) => (
+                  <option key={step} value={step}>
+                    {NEXT_STEP_LABELS[step]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="next_step_date" className="field-label block">
+                Next step date
+              </label>
+              <input
+                id="next_step_date"
+                name="next_step_date"
+                type="date"
+                value={nextStepDate}
+                onChange={(e) => setNextStepDate(e.target.value)}
+                disabled={!nextStep}
+                required={Boolean(nextStep)}
+                className="field-input"
+              />
+            </div>
+          </div>
+        )}
 
         <div>
           <span className="field-label block">Tags</span>
