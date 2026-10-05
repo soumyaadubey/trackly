@@ -77,14 +77,30 @@ export async function updateItem(
     return { error: parsed.error };
   }
 
-  const { error } = await supabase
+  let update = supabase
     .from("items")
     .update(parsed.fields)
     .eq("id", id)
     .eq("user_id", user.id);
+  // Only apply the edit to the version the form was opened from. Without
+  // this, saving in one tab silently discarded whatever another tab (or the
+  // status dropdown) had saved in the meantime. Forms rendered before this
+  // field existed don't send it and keep the old behaviour.
+  const expectedUpdatedAt = formData.get("expected_updated_at");
+  if (typeof expectedUpdatedAt === "string" && expectedUpdatedAt) {
+    update = update.eq("updated_at", expectedUpdatedAt);
+  }
+  const { data: updated, error } = await update.select("id").maybeSingle();
 
   if (error) {
     return { error: userMessage("updateItem", error) };
+  }
+  if (!updated) {
+    return {
+      error:
+        "This item was changed somewhere else (another tab, device or the status menu) after you opened it, so nothing was saved. " +
+        "Your edits are still here: copy anything you need, then reload the page to see the latest version.",
+    };
   }
 
   revalidatePath(KIND_ROUTE[existing.kind]);

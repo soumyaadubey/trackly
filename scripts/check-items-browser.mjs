@@ -48,6 +48,10 @@ export function createItemsFixture() {
         items = items.filter((item) => !matching.includes(item));
         return reply(req.headers.accept?.includes("vnd.pgrst.object") ? matching[0] ?? null : matching);
       }
+      if (req.method === "PATCH") {
+        // Like the database trigger: every update gets a fresh updated_at.
+        for (const item of matching) Object.assign(item, body, { updated_at: new Date().toISOString() });
+      }
       if (req.method === "GET") {
         reads++;
         if (reads === failReadAt) return reply({ code: "XX000", message: "Fixture batch outage" }, 500);
@@ -192,4 +196,42 @@ export async function checkLinkValidation(page, fixture, owner, origin) {
   assert.equal(fixture.rows.length, before);
   fixture.seed(owner, 0);
   console.log("PASS link validation in the form and no href for a stored non-http link");
+}
+
+// Two tabs editing one item: the second save must not silently overwrite the
+// first, and the losing tab keeps every field of its draft.
+export async function checkConflictingEdits(page, fixture, owner, origin) {
+  fixture.seed(owner, 1);
+  const id = fixture.rows[0].id;
+  const other = await page.context().newPage();
+  // Wait for hydration: these are controlled fields, and text typed before
+  // React attaches is not what this check is about.
+  await page.goto(`${origin}/items/${id}/edit`, { waitUntil: "networkidle" });
+  await other.goto(`${origin}/items/${id}/edit`, { waitUntil: "networkidle" });
+
+  await other.getByLabel("Notes", { exact: true }).fill("Saved from the other tab");
+  await other.locator("form button[type=submit]").last().click();
+  await other.waitForURL(`${origin}/opportunities`);
+  await other.close();
+
+  await page.getByLabel("Title", { exact: true }).fill("Draft title");
+  await page.getByLabel("Notes", { exact: true }).fill("Draft notes");
+  await page.getByLabel("Deadline", { exact: true }).fill("2027-01-15");
+  await page.getByLabel("Status", { exact: true }).selectOption("applied");
+  await page.locator("form button[type=submit]").last().click();
+  await page.getByText("changed somewhere else", { exact: false }).waitFor();
+  assert.equal(fixture.rows[0].notes, "Saved from the other tab");
+  assert.equal(await page.getByLabel("Title", { exact: true }).inputValue(), "Draft title");
+  assert.equal(await page.getByLabel("Notes", { exact: true }).inputValue(), "Draft notes");
+  assert.equal(await page.getByLabel("Deadline", { exact: true }).inputValue(), "2027-01-15");
+  assert.equal(await page.getByLabel("Status", { exact: true }).inputValue(), "applied");
+
+  await page.reload({ waitUntil: "networkidle" });
+  assert.equal(await page.getByLabel("Notes", { exact: true }).inputValue(), "Saved from the other tab");
+  await page.getByLabel("Notes", { exact: true }).fill("Reconciled notes");
+  await page.locator("form button[type=submit]").last().click();
+  await page.waitForURL(`${origin}/opportunities`);
+  assert.equal(fixture.rows[0].notes, "Reconciled notes");
+  fixture.seed(owner, 0);
+  console.log("PASS conflicting edits are refused, the draft is kept, and a reloaded save succeeds");
 }

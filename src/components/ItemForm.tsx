@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   KIND_CONFIG,
@@ -29,6 +29,12 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
   const [title, setTitle] = useState(initial?.title ?? "");
   const [url, setUrl] = useState(initial?.url ?? "");
   const [tags, setTags] = useState<string[]>(initial?.tags ?? []);
+  // Controlled, like title and url. React resets uncontrolled fields after
+  // every form action, including one that returns an error, so a rejected
+  // save (a conflict, or a validation error) used to wipe these edits.
+  const [status, setStatus] = useState(initial?.status ?? "saved");
+  const [deadline, setDeadline] = useState(initial?.deadline ?? "");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
   const [tagInput, setTagInput] = useState("");
   const [fetchingTitle, setFetchingTitle] = useState(false);
   const [autofillError, setAutofillError] = useState<string | null>(null);
@@ -132,8 +138,15 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
       <form
         action={formAction}
         onSubmit={(e) => {
+          // Submitted by hand rather than through the action prop: React
+          // resets a form after its action finishes, even when the save was
+          // refused, and that reset put <select> values back to their initial
+          // option. A refused save must leave the whole draft as typed.
+          e.preventDefault();
           setSubmitAttempted(true);
-          if (urlInvalid || urlMissing || titleMissing) e.preventDefault();
+          if (urlInvalid || urlMissing || titleMissing) return;
+          const data = new FormData(e.currentTarget);
+          startTransition(() => formAction(data));
         }}
         className="space-y-5.5"
       >
@@ -216,7 +229,8 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
             <select
               id="status"
               name="status"
-              defaultValue={initial?.status ?? "saved"}
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
               className="field-input"
             >
               {config.statuses.map((s) => (
@@ -235,7 +249,8 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
               id="deadline"
               name="deadline"
               type="date"
-              defaultValue={initial?.deadline ?? ""}
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
               className="field-input"
             />
           </div>
@@ -287,6 +302,11 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
             />
           </div>
           <input type="hidden" name="tags" value={tags.join(",")} />
+          {/* The version this form was opened from: the save only applies
+              if nobody else has changed the item since. */}
+          {initial?.updated_at && (
+            <input type="hidden" name="expected_updated_at" value={initial.updated_at} />
+          )}
         </div>
 
         <div>
@@ -298,7 +318,8 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
             name="notes"
             rows={3}
             maxLength={MAX_NOTES_LENGTH}
-            defaultValue={initial?.notes ?? ""}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
             className="field-input font-serif"
             style={{ fontSize: 15, lineHeight: 1.6 }}
           />

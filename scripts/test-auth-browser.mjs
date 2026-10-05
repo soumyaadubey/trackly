@@ -7,7 +7,7 @@ import { once } from "node:events";
 import { mkdir } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright";
-import { createItemsFixture, checkItemsBrowser, checkLinkValidation, checkTitleAutofill } from "./check-items-browser.mjs";
+import { createItemsFixture, checkConflictingEdits, checkItemsBrowser, checkLinkValidation, checkTitleAutofill } from "./check-items-browser.mjs";
 
 const origin = "http://localhost:3111";
 const provider = "http://localhost:54329";
@@ -150,6 +150,7 @@ try {
   await checkItemsBrowser(page, itemsFixture, [...users.keys()][0], origin);
   await checkTitleAutofill(page, origin);
   await checkLinkValidation(page, itemsFixture, [...users.keys()][0], origin);
+  await checkConflictingEdits(page, itemsFixture, [...users.keys()][0], origin);
 
   // A consumed link is still explained when the browser is already signed in.
   await page.goto(lastLink);

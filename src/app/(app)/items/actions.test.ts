@@ -2,8 +2,9 @@ import { beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ from: vi.fn(), requireUserClient: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ requireUserClient: mocks.requireUserClient }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/navigation", () => ({ redirect: vi.fn(() => { throw new Error("NEXT_REDIRECT"); }) }));
 vi.mock("@/lib/errors", () => ({ userMessage: () => "Database error" }));
-import { deleteItem, restoreItem } from "./actions";
+import { deleteItem, restoreItem, updateItem } from "./actions";
 import type { RestorableItem } from "@/lib/items";
 
 const snapshot: RestorableItem = {
@@ -47,4 +48,31 @@ it("refuses a non-http link in a restored snapshot but keeps older loose links",
 it("reports a restore conflict without overwriting an existing row", async () => {
   const insert = vi.fn().mockResolvedValue({ error: { code: "23505" } }); mocks.from.mockReturnValue({ insert });
   expect((await restoreItem(snapshot)).error).toBe("Database error");
+});
+
+function editForm(expected?: string) {
+  const fd = new FormData();
+  for (const [k, v] of Object.entries({ title: "Edited", url: "example.com", status: "saved", tags: "", notes: "Mine" })) fd.set(k, v);
+  if (expected) fd.set("expected_updated_at", expected);
+  return fd;
+}
+function chain(result: unknown) {
+  const q: Record<string, ReturnType<typeof vi.fn>> = {};
+  for (const m of ["select", "update", "eq"]) q[m] = vi.fn(() => q);
+  q.maybeSingle = vi.fn().mockResolvedValue(result);
+  return q;
+}
+it("only saves an edit over the version the form was opened from", async () => {
+  const lookup = chain({ data: { kind: "course" }, error: null });
+  const write = chain({ data: { id: snapshot.id }, error: null });
+  mocks.from.mockReturnValueOnce(lookup).mockReturnValueOnce(write);
+  await expect(updateItem(snapshot.id, { error: null }, editForm(snapshot.updated_at))).rejects.toThrow("NEXT_REDIRECT");
+  expect(write.eq.mock.calls).toEqual([["id", snapshot.id], ["user_id", "verified-owner"], ["updated_at", snapshot.updated_at]]);
+});
+it("reports a conflicting edit instead of overwriting it", async () => {
+  mocks.from
+    .mockReturnValueOnce(chain({ data: { kind: "course" }, error: null }))
+    .mockReturnValueOnce(chain({ data: null, error: null }));
+  const result = await updateItem(snapshot.id, { error: null }, editForm("2020-01-01T00:00:00+00:00"));
+  expect(result.error).toMatch(/changed somewhere else/);
 });
