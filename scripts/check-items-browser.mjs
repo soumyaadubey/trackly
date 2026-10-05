@@ -2,6 +2,32 @@
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 
+function splitTop(list) {
+  const parts = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < list.length; i++) {
+    if (list[i] === "(") depth++;
+    else if (list[i] === ")") depth--;
+    else if (list[i] === "," && depth === 0) { parts.push(list.slice(start, i)); start = i + 1; }
+  }
+  parts.push(list.slice(start));
+  return parts;
+}
+function matches(item, cond) {
+  if (cond.startsWith("and(")) return splitTop(cond.slice(4, -1)).every((c) => matches(item, c));
+  if (cond.startsWith("or(")) return splitTop(cond.slice(3, -1)).some((c) => matches(item, c));
+  const [, column, op, arg] = cond.match(/^(\w+)\.(eq|lt|gte|in|not)\.(.*)$/) ?? [];
+  assert.ok(column, `unsupported filter: ${cond}`);
+  const value = item[column];
+  if (op === "eq") return String(value) === arg;
+  if (op === "lt") return value !== null && value < arg;
+  if (op === "gte") return value !== null && value >= arg;
+  if (op === "in") return arg.slice(1, -1).split(",").includes(value);
+  assert.equal(arg, "is.null", `unsupported filter: ${cond}`);
+  return value !== null;
+}
+
 export function createItemsFixture() {
   let items = [];
   let failRestore = false;
@@ -33,6 +59,12 @@ export function createItemsFixture() {
       for (const [key, value] of url.searchParams) {
         if (value.startsWith("eq.")) matching = matching.filter((item) => String(item[key]) === value.slice(3));
         if (value.startsWith("gt.")) matching = matching.filter((item) => item[key] > value.slice(3));
+        // Dates compare correctly as YYYY-MM-DD strings; null never matches, as in SQL.
+        if (value.startsWith("lt.")) matching = matching.filter((item) => item[key] !== null && item[key] < value.slice(3));
+        if (value.startsWith("gte.")) matching = matching.filter((item) => item[key] !== null && item[key] >= value.slice(4));
+        // PostgREST logic trees: or=(cond,and(cond,cond),...), with the
+        // operators the app sends. Anything else fails loudly.
+        if (key === "or") matching = matching.filter((item) => splitTop(value.slice(1, -1)).some((c) => matches(item, c)));
         if (value === "not.is.null") matching = matching.filter((item) => item[key] !== null);
         if (value.startsWith("in.(")) matching = matching.filter((item) => value.slice(4, -1).split(",").includes(item[key]));
         if (key === "tags" && value.startsWith("cs.")) matching = matching.filter((item) => item.tags.includes(value.slice(4, -1)));
@@ -183,9 +215,9 @@ export async function checkLinkValidation(page, fixture, owner, origin) {
   fixture.rows[0].title = "Stored unsafe link";
   fixture.rows[0].url = "javascript:alert(1)";
   await page.goto(`${origin}/opportunities`);
-  const row = page.getByText("Stored unsafe link", { exact: true });
-  await row.waitFor();
-  assert.equal(await row.evaluate((el) => el.closest("a")?.hasAttribute("href") ?? false), false);
+  await page.getByText("Stored unsafe link", { exact: true }).waitFor();
+  assert.equal(await page.locator('a[href^="javascript:" i]').count(), 0);
+  assert.equal(await page.getByRole("link", { name: "Open the Stored unsafe link page in a new tab" }).count(), 0);
 
   await page.goto(`${origin}/opportunities/new`);
   await page.getByLabel("Link", { exact: true }).fill("not a link");
@@ -234,4 +266,63 @@ export async function checkConflictingEdits(page, fixture, owner, origin) {
   assert.equal(fixture.rows[0].notes, "Reconciled notes");
   fixture.seed(owner, 0);
   console.log("PASS conflicting edits are refused, the draft is kept, and a reloaded save succeeds");
+}
+
+// The title opens the item; the external page has its own Open action; the
+// nav says where you are, including Overview and while editing.
+export async function checkNavigation(page, fixture, owner, origin) {
+  fixture.seed(owner, 1);
+  const item = fixture.rows[0];
+  await page.goto(`${origin}/`, { waitUntil: "networkidle" });
+  const nav = page.getByRole("navigation", { name: "Sections" }).first();
+  assert.equal(await nav.getByRole("link", { name: "Overview" }).getAttribute("aria-current"), "page");
+
+  await page.goto(`${origin}/opportunities`, { waitUntil: "networkidle" });
+  assert.equal(await nav.getByRole("link", { name: "Opportunities" }).getAttribute("aria-current"), "page");
+  const open = page.getByRole("link", { name: `Open the ${item.title} page in a new tab` });
+  assert.equal(await open.getAttribute("href"), item.url);
+  assert.equal(await open.getAttribute("target"), "_blank");
+
+  await page.getByRole("link", { name: item.title, exact: true }).click();
+  await page.waitForURL(`${origin}/items/${item.id}/edit`);
+  await page.getByRole("link", { name: "← Opportunities" }).click();
+  await page.waitForURL(`${origin}/opportunities`);
+  await nav.getByRole("link", { name: "Overview" }).click();
+  await page.waitForURL(`${origin}/`);
+  fixture.seed(owner, 0);
+  console.log("PASS Overview link, current-section marking, title opens the item, separate Open action, back link from edit");
+}
+
+// Opt-in (TRACKLY_SCREENSHOTS=1): signed-in screens in both themes at desktop
+// and phone width, for visual review. Fails on horizontal overflow.
+export async function captureScreens(page, fixture, owner, origin) {
+  if (!process.env.TRACKLY_SCREENSHOTS) return;
+  fixture.seed(owner, 6);
+  const day = (offset) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+  [-3, -1, 2, 5, 12, null].forEach((offset, i) => {
+    Object.assign(fixture.rows[i], {
+      title: ["Devfolio hackathon — final round", "MLH Fellowship application", "ETHIndia team form", "Google STEP internship", "A very long opportunity title that keeps going well past the width of a phone screen", "Reading list"][i],
+      deadline: offset === null ? null : day(offset),
+      status: i === 1 ? "applied" : "saved",
+      tags: i === 0 ? ["hackathon", "india"] : [],
+      notes: i === 2 ? "Need two more teammates before submitting" : null,
+    });
+  });
+  const dir = ".next/test-artifacts/screens";
+  await mkdir(dir, { recursive: true });
+  const shots = [["home", "/"], ["list", "/opportunities"], ["edit", `/items/${fixture.rows[0].id}/edit`], ["new", "/opportunities/new"]];
+  for (const theme of ["light", "dark"]) {
+    for (const [size, viewport] of [["desktop", { width: 1280, height: 900 }], ["phone", { width: 390, height: 844 }]]) {
+      await page.setViewportSize(viewport);
+      for (const [name, path] of shots) {
+        await page.goto(`${origin}${path}`, { waitUntil: "networkidle" });
+        await page.evaluate((t) => document.documentElement.classList.toggle("dark", t === "dark"), theme);
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${name} ${size} overflows`);
+        await page.screenshot({ path: `${dir}/${name}-${theme}-${size}.png`, fullPage: true });
+      }
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  fixture.seed(owner, 0);
+  console.log(`PASS screenshots captured in ${dir} with no horizontal overflow`);
 }

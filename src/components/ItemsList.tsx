@@ -326,18 +326,17 @@ export default async function ItemsList({ kind, searchParams }: Props) {
                   style={{ borderBottom: "1px solid var(--border-soft)" }}
                 >
                   <div className="min-w-0">
-                    {/* Rows written straight through the API never passed the
-                        form, so the link is re-checked before it becomes an
-                        href: anything else renders as plain text. */}
-                    <a
-                      href={parseHttpUrl(item.url) ?? undefined}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    {/* The title opens the item, as it does on the dashboard.
+                        It used to open the external page instead, so the same
+                        looking link did two different things. The external
+                        page has its own "Open" action below. */}
+                    <Link
+                      href={`/items/${item.id}/edit`}
                       className="font-serif block truncate text-[19px] font-semibold hover:underline"
                       style={{ color: "var(--ink)" }}
                     >
                       {item.title}
-                    </a>
+                    </Link>
                     {item.notes && (
                       <div
                         className="font-serif mt-1 truncate text-[13px] italic"
@@ -383,6 +382,20 @@ export default async function ItemsList({ kind, searchParams }: Props) {
                     </div>
 
                     <div className="flex items-center gap-1.5">
+                      {/* Rows written straight through the API never passed
+                          the form, so the link is re-checked before it
+                          becomes an href; an unsafe one gets no Open action. */}
+                      {parseHttpUrl(item.url) && (
+                        <a
+                          href={parseHttpUrl(item.url)!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="row-action"
+                          aria-label={`Open the ${item.title} page in a new tab`}
+                        >
+                          Open ↗
+                        </a>
+                      )}
                       <Link href={`/items/${item.id}/edit`} className="row-action">
                         Edit
                       </Link>

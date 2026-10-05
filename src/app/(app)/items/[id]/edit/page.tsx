@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ItemForm from "@/components/ItemForm";
 import { updateItem } from "@/app/(app)/items/actions";
-import { KIND_CONFIG, type Item } from "@/lib/items";
+import { KIND_CONFIG, KIND_ROUTE, type Item } from "@/lib/items";
 import { KIND_ICON } from "@/components/icons";
 
 export default async function EditItemPage(props: PageProps<"/items/[id]/edit">) {
@@ -23,6 +24,15 @@ export default async function EditItemPage(props: PageProps<"/items/[id]/edit">)
 
   return (
     <div className="mx-auto w-full max-w-xl px-7 py-10">
+      {/* The edit URL sits outside every section, so no nav item is active
+          here: this says where the item lives and how to get back. */}
+      <Link
+        href={KIND_ROUTE[item.kind]}
+        className="mb-3 inline-block text-[13px] hover:underline"
+        style={{ color: "var(--ink-muted)" }}
+      >
+        ← {config.pluralLabel}
+      </Link>
       <h1 className="font-serif mb-5 flex items-center gap-2.5 text-2xl" style={{ color: "var(--ink)" }}>
         <Icon size={22} style={{ color: `var(--kind-${item.kind})` }} />
         Edit {config.label.toLowerCase()}
