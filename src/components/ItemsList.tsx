@@ -155,6 +155,37 @@ export default async function ItemsList({ kind, searchParams }: Props) {
     redirect(pageHref(error ? 1 : totalPages));
   }
 
+  type FilterKey = "q" | "status" | "tag" | "due";
+  function hrefWithout(filter: FilterKey) {
+    const params = new URLSearchParams();
+    params.set("view", view);
+    if (statusFilter && filter !== "status") params.set("status", statusFilter);
+    if (due && filter !== "due") params.set("due", due);
+    if (q && filter !== "q") params.set("q", q);
+    if (tagFilter && filter !== "tag") params.set("tag", tagFilter);
+    return `${route}?${params.toString()}`;
+  }
+
+  // Spelled out in the no-results state, each with its own remove control,
+  // instead of a generic "nothing matches that combination".
+  const activeFilters = [
+    q ? { key: "q" as const, describe: `matching “${q}”`, remove: "search" } : null,
+    statusFilter
+      ? { key: "status" as const, describe: `with status ${config.statusLabels[statusFilter]}`, remove: "status" }
+      : null,
+    tagFilter ? { key: "tag" as const, describe: `tagged ${tagFilter}`, remove: `tag ${tagFilter}` } : null,
+    due
+      ? { key: "due" as const, describe: due === "overdue" ? "that are overdue" : "due from today on", remove: `${due} only` }
+      : null,
+  ].filter((f) => f !== null);
+
+  const archiveLabels = config.archiveStatuses.map((s) => config.statusLabels[s]);
+  const archiveLabelText =
+    archiveLabels.length > 1
+      ? `${archiveLabels.slice(0, -1).join(", ")} or ${archiveLabels.at(-1)}`
+      : archiveLabels[0];
+  const plural = config.pluralLabel.toLowerCase();
+
   function tagHref(tag: string) {
     const params = new URLSearchParams();
     params.set("view", view);
@@ -286,8 +317,44 @@ export default async function ItemsList({ kind, searchParams }: Props) {
           </div>
         )}
 
-        {!error && items && items.length === 0 && !outOfRange && !isFiltered && (
-          <div className="px-7 py-16 text-center">
+        {!error && items && items.length === 0 && !outOfRange && !isFiltered && view === "archive" && (
+          <div role="status" className="px-7 py-16 text-center">
+            <h2 className="font-serif mb-3 text-[20px]" style={{ color: "var(--ink)" }}>
+              Nothing archived yet.
+            </h2>
+            <p className="mx-auto mb-6 max-w-sm text-sm leading-relaxed" style={{ color: "var(--ink-muted)" }}>
+              When you mark {plural} as {archiveLabelText}, they move here.
+            </p>
+            <Link href={`${route}?view=active`} className="pill-btn-secondary inline-block text-[13px]">
+              Back to active · {activeCount ?? 0}
+            </Link>
+          </div>
+        )}
+
+        {!error && items && items.length === 0 && !outOfRange && !isFiltered && view === "active" &&
+          (archiveCount ?? 0) > 0 && (
+          <div role="status" className="px-7 py-16 text-center">
+            <h2 className="font-serif mb-3 text-[20px]" style={{ color: "var(--ink)" }}>
+              Nothing active right now.
+            </h2>
+            <p className="mx-auto mb-6 max-w-sm text-sm leading-relaxed" style={{ color: "var(--ink-muted)" }}>
+              All {archiveCount} of your {plural} are in the archive.
+            </p>
+            <div className="flex flex-wrap justify-center gap-2.5">
+              <Link href={`${route}/new`} className="pill-btn-primary inline-block text-[13px]">
+                + Add {config.label.toLowerCase()}
+              </Link>
+              <Link href={`${route}?view=archive`} className="pill-btn-secondary inline-block text-[13px]">
+                View archive
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* First use only: nothing active and nothing archived. */}
+        {!error && items && items.length === 0 && !outOfRange && !isFiltered && view === "active" &&
+          (archiveCount ?? 0) === 0 && (
+          <div role="status" className="px-7 py-16 text-center">
             <Icon size={34} style={{ color: `var(--kind-${kind})`, opacity: 0.35, margin: "0 auto 18px" }} />
             <h2 className="font-serif mb-4 text-[26px]" style={{ color: "var(--ink)" }}>
               A blank page, on purpose.
@@ -303,16 +370,26 @@ export default async function ItemsList({ kind, searchParams }: Props) {
         )}
 
         {!error && items && items.length === 0 && !outOfRange && isFiltered && (
-          <div className="px-7 py-16 text-center">
+          <div role="status" className="px-7 py-16 text-center">
             <h2 className="font-serif mb-3 text-[20px]" style={{ color: "var(--ink)" }}>
-              Nothing matches that combination.
+              No results.
             </h2>
-            <p className="mx-auto mb-6 max-w-sm text-sm leading-relaxed" style={{ color: "var(--ink-muted)" }}>
-              Try dropping the status filter or clearing your search.
+            <p className="mx-auto mb-6 max-w-md text-sm leading-relaxed" style={{ color: "var(--ink-muted)" }}>
+              No {view === "archive" ? "archived" : "active"} {plural}{" "}
+              {activeFilters.map((f) => f.describe).join(", ")}.
             </p>
-            <Link href={route} className="pill-btn-secondary inline-block text-[13px]">
-              Clear all filters
-            </Link>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {activeFilters.length > 1 &&
+                activeFilters.map((f) => (
+                  <Link key={f.key} href={hrefWithout(f.key)} className="row-action">
+                    Remove {f.remove}
+                  </Link>
+                ))}
+              {/* Stays on the current tab: this used to drop view=archive. */}
+              <Link href={`${route}?view=${view}`} className="pill-btn-secondary inline-block text-[13px]">
+                Clear {activeFilters.length > 1 ? "all filters" : "filter"}
+              </Link>
+            </div>
           </div>
         )}
 

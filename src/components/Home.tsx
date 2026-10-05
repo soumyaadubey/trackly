@@ -88,7 +88,9 @@ export default async function Home({ name }: { name: string }) {
         </div>
       )}
 
-      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {/* On phones each card is one compact row (label left, count right):
+          stacked at full size, the three took most of the first screen. */}
+      <div className="mb-5 grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-4">
         {KINDS.map((kind, i) => {
           const config = KIND_CONFIG[kind];
           const failed = Boolean(counts[i].error);
@@ -102,8 +104,8 @@ export default async function Home({ name }: { name: string }) {
               style={{ background: "var(--paper)", border: "1px solid var(--border)" }}
             >
               <div className="kind-icon-stripe" style={{ background: `var(--kind-${kind})` }} />
-              <div className="p-6">
-                <div className="mb-2.5 flex items-center gap-2" style={{ color: `var(--kind-${kind})` }}>
+              <div className="flex items-center justify-between gap-3 px-5 py-3.5 sm:block sm:p-6">
+                <div className="flex items-center gap-2 sm:mb-2.5" style={{ color: `var(--kind-${kind})` }}>
                   <Icon size={17} />
                   <span
                     className="text-[11px] font-semibold uppercase"
@@ -112,10 +114,10 @@ export default async function Home({ name }: { name: string }) {
                     {config.pluralLabel}
                   </span>
                 </div>
-                <div className="font-serif text-[36px]" style={{ color: "var(--ink)" }}>
+                <div className="font-serif text-[28px] leading-none sm:text-[36px] sm:leading-normal" style={{ color: "var(--ink)" }}>
                   {failed ? <span aria-label="Count unavailable">—</span> : count}
                 </div>
-                <div className="mt-1 text-[13px]" style={{ color: "var(--ink-muted)" }}>
+                <div className="mt-1 hidden text-[13px] sm:block" style={{ color: "var(--ink-muted)" }}>
                   {failed ? "couldn't load count" : `active ${config.pluralLabel.toLowerCase()}`}
                 </div>
               </div>
@@ -134,7 +136,11 @@ export default async function Home({ name }: { name: string }) {
           </h2>
           <div className="flex flex-wrap gap-2">
             {KINDS.map((kind) => (
-              <Link key={kind} href={`${KIND_ROUTE[kind]}/new`} className="pill-btn-secondary text-[13px]">
+              <Link
+                key={kind}
+                href={`${KIND_ROUTE[kind]}/new`}
+                className="pill-btn-secondary text-[13px] max-sm:px-3.5! max-sm:py-2.5!"
+              >
                 + {KIND_CONFIG[kind].label}
               </Link>
             ))}
@@ -143,8 +149,11 @@ export default async function Home({ name }: { name: string }) {
 
         {nothingPending && !overdue.error && !upcoming.error ? (
           <div className="px-7 py-12 text-center">
+            {/* First use reads differently from "you have items, none due". */}
             <p className="text-[15px]" style={{ color: "var(--ink-muted)" }}>
-              Nothing with a deadline yet.
+              {counts.every((c) => !c.error && (c.count ?? 0) === 0)
+                ? "Nothing tracked yet. Add a hackathon, course or roadmap above; anything with a deadline shows up here."
+                : "No deadlines to act on. Items without a deadline, or that you've already applied to or finished, don't show here."}
             </p>
           </div>
         ) : (

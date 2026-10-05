@@ -154,7 +154,9 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
           <label htmlFor="url" className="field-label block">
             Link
           </label>
-          <div className="flex gap-2">
+          {/* Stacked on phones: side by side, the link box was squeezed to a
+              few characters next to the button. */}
+          <div className="flex flex-col gap-2 sm:flex-row">
             <input
               id="url"
               name="url"
@@ -221,7 +223,8 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4.5">
+        {/* One column on phones: two columns clipped the date input. */}
+        <div className="grid grid-cols-1 gap-4.5 sm:grid-cols-2">
           <div>
             <label htmlFor="status" className="field-label block">
               Status

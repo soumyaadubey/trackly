@@ -326,3 +326,44 @@ export async function captureScreens(page, fixture, owner, origin) {
   fixture.seed(owner, 0);
   console.log(`PASS screenshots captured in ${dir} with no horizontal overflow`);
 }
+
+// First use, empty archive, everything archived and no results each say what
+// actually happened, and clearing filters keeps the current tab.
+export async function checkEmptyStates(page, fixture, owner, origin) {
+  const shoot = async (name) => {
+    if (!process.env.TRACKLY_SCREENSHOTS) return;
+    await mkdir(".next/test-artifacts/screens", { recursive: true });
+    await page.screenshot({ path: `.next/test-artifacts/screens/empty-${name}.png` });
+  };
+  fixture.seed(owner, 0);
+  await page.goto(`${origin}/`);
+  await page.getByText("Nothing tracked yet.", { exact: false }).waitFor();
+  await page.goto(`${origin}/opportunities`);
+  await page.getByRole("heading", { name: "A blank page, on purpose." }).waitFor();
+  await page.goto(`${origin}/opportunities?view=archive`);
+  await page.getByRole("heading", { name: "Nothing archived yet." }).waitFor();
+  await page.getByText("as Accepted, Rejected or Ghosted", { exact: false }).waitFor();
+  await shoot("archive");
+
+  fixture.seed(owner, 1);
+  fixture.rows[0].status = "rejected";
+  await page.goto(`${origin}/opportunities`);
+  await page.getByRole("heading", { name: "Nothing active right now." }).waitFor();
+  await page.getByText("All 1 of your opportunities are in the archive.").waitFor();
+  await page.getByRole("link", { name: "View archive" }).click();
+  await page.waitForURL(`${origin}/opportunities?view=archive`);
+  Object.assign(fixture.rows[0], { status: "saved", deadline: null });
+  await page.goto(`${origin}/`);
+  await page.getByText("No deadlines to act on.", { exact: false }).waitFor();
+
+  await page.goto(`${origin}/opportunities?view=active&status=applying&tag=nope`);
+  await page.getByRole("heading", { name: "No results." }).waitFor();
+  await page.getByText("No active opportunities with status Applying, tagged nope.").waitFor();
+  await shoot("no-results");
+  assert.equal(await page.getByRole("link", { name: "Remove tag nope" }).getAttribute("href"), "/opportunities?view=active&status=applying");
+  await page.goto(`${origin}/opportunities?view=archive&tag=nope`);
+  await page.getByText("No archived opportunities tagged nope.").waitFor();
+  assert.equal(await page.getByRole("link", { name: "Clear filter" }).getAttribute("href"), "/opportunities?view=archive");
+  fixture.seed(owner, 0);
+  console.log("PASS distinct first-use, empty archive, all-archived, nothing-due and no-results states; clearing keeps the tab");
+}
