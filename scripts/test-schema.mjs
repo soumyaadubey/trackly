@@ -62,9 +62,17 @@ try {
   console.log("Starting disposable PostgreSQL 17 container (may pull the image)…");
   docker(["run", "--detach", "--rm", "--name", container, "--tmpfs", "/var/lib/postgresql/data", "-e", "POSTGRES_PASSWORD=local_fixture_only", "postgres:17"]);
   started = true;
+  // Ask over TCP, not the default Unix socket. On first start the image runs
+  // a temporary socket-only server for initialisation, then restarts; a socket
+  // check can pass against that temporary server and the next command then
+  // finds no server at all (seen on CI). Only the final server listens on TCP.
   let ready = false;
-  for (let i = 0; i < 60; i++) {
-    try { docker(["exec", container, "pg_isready", "-U", "postgres"]); ready = true; break; } catch { await delay(500); }
+  for (let i = 0; i < 120; i++) {
+    try {
+      docker(["exec", "-e", "PGPASSWORD=local_fixture_only", container, "psql", "-h", "127.0.0.1", "-U", "postgres", "-qAt", "-c", "select 1"]);
+      ready = true;
+      break;
+    } catch { await delay(500); }
   }
   assert.ok(ready, "Postgres did not become ready");
   sql("postgres", "create role authenticated; create role anon; create database fresh; create database upgraded;");
