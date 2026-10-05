@@ -1,5 +1,5 @@
 import { KIND_ICON } from "@/components/icons";
-import { URGENCY_CLASS, URGENCY_STYLE } from "@/components/urgency-styles";
+import { URGENCY_STYLE } from "@/components/urgency-styles";
 import {
   addDays,
   deadlineUrgency,
@@ -97,7 +97,7 @@ export default async function LandingBoard() {
                 </div>
               </div>
               <div
-                className={`shrink-0 whitespace-nowrap text-[13px] ${URGENCY_CLASS[urgency]}`}
+                className="shrink-0 whitespace-nowrap text-[13px]"
                 style={URGENCY_STYLE[urgency]}
               >
                 {formatDeadline(deadline, urgency, today)}

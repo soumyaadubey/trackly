@@ -13,10 +13,3 @@ export const URGENCY_STYLE: Record<Urgency, React.CSSProperties> = {
   normal: { color: "var(--ink-muted)", fontWeight: 500 },
   none: { color: "var(--ink-faintest)", fontWeight: 400 },
 };
-
-export const URGENCY_CLASS: Record<Urgency, string> = {
-  overdue: "nb-overdue",
-  soon: "",
-  normal: "",
-  none: "",
-};

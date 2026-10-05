@@ -10,9 +10,12 @@
   --border-soft:#eae5d0;
   --input-border:#e2dcc4;
   --ink:#26241b;
-  --ink-muted:#77715c;
-  --ink-faint:#948d75;
-  --ink-faintest:#a29b84;
+  /* Every text color here meets WCAG AA (4.5:1) on page, panel, paper and
+     hovered rows. faint and faintest are now the same: below this they stop
+     being readable, so hierarchy comes from size and weight instead. */
+  --ink-muted:#605b4a;
+  --ink-faint:#6c6755;
+  --ink-faintest:#6c6755;
 
   --accent:#2b4f7c;
   --accent-hover:#22406a;
@@ -26,7 +29,7 @@
   --kind-roadmap:#7c4a6b;
 
   --overdue:#b03535;
-  --due-soon:#96681a;
+  --due-soon:#885f18;
   --focus-ring:#2b4f7c;
 
   --danger:#9c3327;
@@ -40,7 +43,7 @@
   --status-interview-bg:#f2ecd6;
   --status-interview-fg:#7d6116;
   --status-neutral-bg:#ece8d5;
-  --status-neutral-fg:#77715c;
+  --status-neutral-fg:#605b4a;
 
   --disabled-bg:#ccc6ae;
   --skeleton:#efe9d4;
@@ -55,9 +58,9 @@
   --border-soft:#2b2a1e;
   --input-border:#333123;
   --ink:#eeead6;
-  --ink-muted:#95907a;
-  --ink-faint:#6f6b58;
-  --ink-faintest:#6f6b58;
+  --ink-muted:#a19c86;
+  --ink-faint:#928e7b;
+  --ink-faintest:#928e7b;
 
   --accent:#7fa4d6;
   --accent-hover:#93b3de;
@@ -85,7 +88,7 @@
   --status-interview-bg:#332d1a;
   --status-interview-fg:#e0c07e;
   --status-neutral-bg:#26251a;
-  --status-neutral-fg:#95907a;
+  --status-neutral-fg:#a19c86;
 
   --disabled-bg:#413f2e;
   --skeleton:#2a2820;
@@ -113,18 +116,6 @@ body {
 
 .font-serif {
   font-family: var(--font-serif);
-}
-
-@keyframes nb-overdue {
-  0%, 54% { opacity: 1; }
-  62%, 92% { opacity: 0.32; }
-  100% { opacity: 1; }
-}
-.nb-overdue {
-  animation: nb-overdue 1.8s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .nb-overdue { animation: none; }
 }
 
 .pill-btn-primary {
