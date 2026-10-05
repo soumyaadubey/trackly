@@ -1,4 +1,4 @@
-import { addDays, KIND_CONFIG, type Kind } from "@/lib/items";
+import { addDays, KIND_CONFIG, parseHttpUrl, type Kind } from "@/lib/items";
 
 /**
  * iCalendar (RFC 5545) generation for the deadline export.
@@ -108,7 +108,7 @@ export function buildCalendar(items: IcsItem[], now: Date = new Date()): string 
     const description = [
       `${config.label} · ${statusLabel}`,
       item.notes?.trim() || null,
-      item.url || null,
+      parseHttpUrl(item.url ?? "") ?? null,
     ]
       .filter(Boolean)
       .join("\n\n");
@@ -128,8 +128,9 @@ export function buildCalendar(items: IcsItem[], now: Date = new Date()): string 
       "TRANSP:TRANSPARENT",
     );
 
-    if (item.url) {
-      lines.push(`URL:${icsEscape(item.url)}`);
+    const url = parseHttpUrl(item.url ?? "");
+    if (url) {
+      lines.push(`URL:${icsEscape(url)}`);
     }
 
     lines.push(

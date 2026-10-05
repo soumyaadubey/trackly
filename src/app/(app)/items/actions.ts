@@ -155,7 +155,11 @@ export async function deleteItem(id: string): Promise<SaveState & { deleted?: Re
  * any link to /items/<id>/edit working.
  */
 export async function restoreItem(item: RestorableItem): Promise<SaveState> {
+  // The snapshot comes back from the browser, so its link is not trusted: it
+  // must be http(s). Only the scheme is checked, not the full parseHttpUrl
+  // rule, because rows saved before that rule existed must still come back.
   if (!item || !isKind(item.kind) || !isStatusForKind(item.kind, item.status) ||
+      typeof item.url !== "string" || !/^https?:\/\//i.test(item.url) ||
       typeof item.created_at !== "string" || !Number.isFinite(Date.parse(item.created_at)) ||
       typeof item.updated_at !== "string" || !Number.isFinite(Date.parse(item.updated_at))) {
     return { error: "That item can't be restored." };

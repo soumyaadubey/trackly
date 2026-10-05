@@ -9,6 +9,7 @@ import {
   MAX_TAGS,
   MAX_TAG_LENGTH,
   MAX_TITLE_LENGTH,
+  parseHttpUrl,
   type Item,
   type Kind,
 } from "@/lib/items";
@@ -22,28 +23,6 @@ type Props = {
 };
 
 const initialState: SaveState = { error: null };
-
-/**
- * A cheap "is the user finished typing a link" check for inline validation.
- *
- * This used to reject anything containing a comma, which fails valid URLs like
- * https://example.com/a,b. Parsing it properly is both more accurate and
- * shorter — the only thing the heuristic still has to add is requiring a dot in
- * the host, since `new URL("https://foo")` is technically valid but is almost
- * always a half-typed address.
- */
-function looksLikeUrl(value: string): boolean {
-  const v = value.trim();
-  if (!v) return false;
-  if (/\s/.test(v)) return false;
-  try {
-    const parsed = new URL(/^https?:\/\//i.test(v) ? v : `https://${v}`);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
-    return /\.[a-z]{2,}$/i.test(parsed.hostname) || parsed.hostname === "localhost";
-  } catch {
-    return false;
-  }
-}
 
 export default function ItemForm({ kind, action, initial, submitLabel }: Props) {
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -64,7 +43,9 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
   // Don't leave a request running against an unmounted form.
   useEffect(() => () => autofillAbort.current?.abort(), []);
 
-  const urlInvalid = url.trim() !== "" && !looksLikeUrl(url);
+  // The same rule the server applies, so the form never accepts a link the
+  // save will then reject (or the reverse).
+  const urlInvalid = url.trim() !== "" && parseHttpUrl(url) === null;
   const urlMissing = url.trim() === "";
   const titleMissing = title.trim() === "";
 
@@ -97,7 +78,8 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
     setFetchingTitle(true);
     setAutofillError(null);
     try {
-      const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+      const normalized = parseHttpUrl(url);
+      if (!normalized) return;
       const res = await fetch(`/api/fetch-title?url=${encodeURIComponent(normalized)}`, {
         signal: controller.signal,
       });

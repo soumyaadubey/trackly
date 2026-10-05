@@ -38,6 +38,12 @@ it("rejects malformed restoration timestamps before writing", async () => {
   expect((await restoreItem({ ...snapshot, created_at: "invalid" })).error).toBeTruthy();
   expect(mocks.from).not.toHaveBeenCalled();
 });
+it("refuses a non-http link in a restored snapshot but keeps older loose links", async () => {
+  expect((await restoreItem({ ...snapshot, url: "javascript:alert(1)" })).error).toBeTruthy();
+  expect(mocks.from).not.toHaveBeenCalled();
+  const insert = vi.fn().mockResolvedValue({ error: null }); mocks.from.mockReturnValue({ insert });
+  expect(await restoreItem({ ...snapshot, url: "https://saved before validation" })).toEqual({ error: null });
+});
 it("reports a restore conflict without overwriting an existing row", async () => {
   const insert = vi.fn().mockResolvedValue({ error: { code: "23505" } }); mocks.from.mockReturnValue({ insert });
   expect((await restoreItem(snapshot)).error).toBe("Database error");

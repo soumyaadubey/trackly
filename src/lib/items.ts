@@ -179,20 +179,25 @@ export function parseItemForm(
   kind: Kind,
 ): { ok: true; fields: ItemFields } | { ok: false; error: string } {
   const title = String(formData.get("title") ?? "").trim();
-  const url = normalizeUrl(String(formData.get("url") ?? ""));
+  const rawUrl = String(formData.get("url") ?? "").trim();
   const status = String(formData.get("status") ?? "saved");
   const deadline = String(formData.get("deadline") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
   const tags = parseTags(formData.get("tags"));
 
-  if (!title || !url) {
+  if (!title || !rawUrl) {
     return { ok: false, error: "Title and URL are required." };
   }
   if (title.length > MAX_TITLE_LENGTH) {
     return { ok: false, error: `Title must be under ${MAX_TITLE_LENGTH} characters.` };
   }
-  if (url.length > MAX_URL_LENGTH) {
+  // Checked on the prefixed form: that is what gets stored.
+  const url = parseHttpUrl(rawUrl);
+  if (url && url.length > MAX_URL_LENGTH) {
     return { ok: false, error: "That link is too long." };
+  }
+  if (!url) {
+    return { ok: false, error: "That doesn't look like a web link. Check it starts like example.com or https://…" };
   }
   if (notes && notes.length > MAX_NOTES_LENGTH) {
     return { ok: false, error: `Notes must be under ${MAX_NOTES_LENGTH} characters.` };
@@ -220,11 +225,30 @@ export function isValidDate(value: string): boolean {
   );
 }
 
-export function normalizeUrl(raw: string): string {
+/**
+ * The one rule for what counts as a link, shared by the form, the server
+ * actions and rendering. Returns the link as it should be stored (with
+ * https:// added when no scheme was typed), or null.
+ *
+ * Only http(s) links to a real-looking host are accepted: a dot and a TLD, or
+ * localhost. Embedded credentials are rejected. The text is otherwise kept as
+ * typed rather than re-serialised, so nothing the user wrote gets rewritten.
+ */
+export function parseHttpUrl(raw: string): string | null {
   const trimmed = raw.trim();
-  if (!trimmed) return trimmed;
-  if (!/^https?:\/\//i.test(trimmed)) return `https://${trimmed}`;
-  return trimmed;
+  if (!trimmed || /\s/.test(trimmed)) return null;
+  const candidate = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+  if (parsed.username || parsed.password) return null;
+  const host = parsed.hostname;
+  if (host !== "localhost" && !/\.(?:[a-z]{2,}|xn--[a-z0-9-]+)$/i.test(host)) return null;
+  return candidate;
 }
 
 export type Urgency = "overdue" | "soon" | "normal" | "none";

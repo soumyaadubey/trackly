@@ -12,7 +12,7 @@ import {
   isValidDate,
   localToday,
   todayForOffset,
-  normalizeUrl,
+  parseHttpUrl,
   parseItemForm,
   parseTags,
   MAX_TAGS,
@@ -98,22 +98,38 @@ describe("parseTags", () => {
   });
 });
 
-describe("normalizeUrl", () => {
+describe("parseHttpUrl", () => {
   it("leaves an already-schemed url untouched", () => {
-    expect(normalizeUrl("https://example.com")).toBe("https://example.com");
-    expect(normalizeUrl("http://example.com")).toBe("http://example.com");
+    expect(parseHttpUrl("https://example.com")).toBe("https://example.com");
+    expect(parseHttpUrl("http://example.com")).toBe("http://example.com");
   });
 
-  it("prepends https:// to a bare domain", () => {
-    expect(normalizeUrl("example.com")).toBe("https://example.com");
+  it("prepends https:// to a bare domain and trims", () => {
+    expect(parseHttpUrl("example.com")).toBe("https://example.com");
+    expect(parseHttpUrl("  example.com  ")).toBe("https://example.com");
   });
 
-  it("trims surrounding whitespace", () => {
-    expect(normalizeUrl("  example.com  ")).toBe("https://example.com");
+  it("keeps the link as typed instead of re-serialising it", () => {
+    expect(parseHttpUrl("Example.com/A,b?x=1#top")).toBe("https://Example.com/A,b?x=1#top");
   });
 
-  it("passes through an empty string", () => {
-    expect(normalizeUrl("   ")).toBe("");
+  it("accepts localhost and internationalised domains", () => {
+    expect(parseHttpUrl("http://localhost:3000/x")).toBe("http://localhost:3000/x");
+    expect(parseHttpUrl("пример.рф")).toBe("https://пример.рф");
+  });
+
+  it.each([
+    ["empty", "   "],
+    ["text with spaces", "not a link"],
+    ["a half-typed host", "devpost"],
+    ["javascript:", "javascript:alert(1)"],
+    ["data:", "data:text/html,<script>"],
+    ["mailto:", "mailto:a@b.com"],
+    ["ftp:", "ftp://example.com"],
+    ["embedded credentials", "https://user:pass@example.com"],
+    ["a bare IP", "192.168.1.1"],
+  ])("rejects %s", (_, value) => {
+    expect(parseHttpUrl(value)).toBeNull();
   });
 });
 
@@ -209,6 +225,14 @@ describe("parseItemForm", () => {
     expect(result.fields.deadline).toBe("2026-09-30");
   });
 
+  it("rejects a link the form would also reject", () => {
+    const result = parseItemForm(form({ ...valid, url: "not a link" }), "opportunity");
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toMatch(/web link/);
+    expect(parseItemForm(form({ ...valid, url: "javascript:alert(1)" }), "opportunity").ok).toBe(false);
+  });
+
   it("requires a title and a url", () => {
     expect(parseItemForm(form({ ...valid, title: "  " }), "opportunity").ok).toBe(false);
     expect(parseItemForm(form({ ...valid, url: "" }), "opportunity").ok).toBe(false);
@@ -238,24 +262,6 @@ describe("parseItemForm", () => {
   it("rejects an over-long title", () => {
     const result = parseItemForm(form({ ...valid, title: "x".repeat(301) }), "opportunity");
     expect(result.ok).toBe(false);
-  });
-});
-
-describe("normalizeUrl (scheme safety)", () => {
-  // The rendered list puts item.url straight into an <a href>. Anything that
-  // is not http(s) has to come out the other side inert.
-  it("defuses a javascript: url instead of passing it through", () => {
-    const out = normalizeUrl("javascript:alert(1)");
-    expect(out.startsWith("https://")).toBe(true);
-    expect(out.startsWith("javascript:")).toBe(false);
-  });
-
-  it("defuses a data: url", () => {
-    expect(normalizeUrl("data:text/html,<script>").startsWith("https://")).toBe(true);
-  });
-
-  it("preserves a path with commas", () => {
-    expect(normalizeUrl("example.com/a,b")).toBe("https://example.com/a,b");
   });
 });
 

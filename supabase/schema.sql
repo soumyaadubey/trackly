@@ -53,6 +53,12 @@ alter table public.items drop constraint if exists items_url_len_check;
 alter table public.items add constraint items_url_len_check
   check (char_length(url) between 1 and 2048);
 
+-- Only http(s) links: the list renders the url as an href. Migration 0004
+-- adds the same constraint to existing projects.
+alter table public.items drop constraint if exists items_url_scheme_check;
+alter table public.items add constraint items_url_scheme_check
+  check (url ~* '^https?://');
+
 alter table public.items drop constraint if exists items_notes_len_check;
 alter table public.items add constraint items_notes_len_check
   check (notes is null or char_length(notes) <= 10000);

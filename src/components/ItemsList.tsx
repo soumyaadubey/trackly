@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   deadlineIsActionable,
   ITEMS_PER_PAGE,
+  parseHttpUrl,
   KIND_CONFIG,
   KIND_ROUTE,
   MAX_TAG_LENGTH,
@@ -325,8 +326,11 @@ export default async function ItemsList({ kind, searchParams }: Props) {
                   style={{ borderBottom: "1px solid var(--border-soft)" }}
                 >
                   <div className="min-w-0">
+                    {/* Rows written straight through the API never passed the
+                        form, so the link is re-checked before it becomes an
+                        href: anything else renders as plain text. */}
                     <a
-                      href={item.url}
+                      href={parseHttpUrl(item.url) ?? undefined}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-serif block truncate text-[19px] font-semibold hover:underline"

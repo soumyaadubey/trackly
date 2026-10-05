@@ -171,3 +171,25 @@ export async function checkTitleAutofill(page, origin) {
   await page.unroute("**/api/fetch-title**");
   console.log("PASS title autofill ignores responses after the title is typed or the link is edited");
 }
+
+// One link rule everywhere: the form refuses what the server would refuse, and
+// a non-http link already in the database is never rendered as an href.
+export async function checkLinkValidation(page, fixture, owner, origin) {
+  fixture.seed(owner, 1);
+  fixture.rows[0].title = "Stored unsafe link";
+  fixture.rows[0].url = "javascript:alert(1)";
+  await page.goto(`${origin}/opportunities`);
+  const row = page.getByText("Stored unsafe link", { exact: true });
+  await row.waitFor();
+  assert.equal(await row.evaluate((el) => el.closest("a")?.hasAttribute("href") ?? false), false);
+
+  await page.goto(`${origin}/opportunities/new`);
+  await page.getByLabel("Link", { exact: true }).fill("not a link");
+  await page.getByLabel("Title", { exact: true }).fill("Bad link");
+  const before = fixture.rows.length;
+  await page.locator("form button[type=submit]").last().click();
+  await page.getByText("This doesn't look like a link yet", { exact: false }).waitFor();
+  assert.equal(fixture.rows.length, before);
+  fixture.seed(owner, 0);
+  console.log("PASS link validation in the form and no href for a stored non-http link");
+}
