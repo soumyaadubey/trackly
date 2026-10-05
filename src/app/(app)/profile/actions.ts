@@ -10,7 +10,9 @@ import { removeAccountData } from "@/lib/delete-account";
 import {
   AVATAR_TYPES_LABEL,
   MAX_AVATAR_BYTES,
+  avatarFileName,
   extensionForType,
+  nextAvatarName,
   isAllowedAvatarType,
 } from "@/lib/avatar";
 
@@ -78,41 +80,51 @@ export async function updateAvatar(
   const supabase = await createClient();
 
   // The extension comes from the validated MIME type, never from the uploaded
-  // filename — the storage policy only accepts exactly `<uid>/avatar.<ext>`,
-  // so the user has no say in where their file lands or what it is called.
-  const ext = extensionForType(file.type);
-  const path = `${user.id}/avatar.${ext}`;
+  // filename, and the slot from nextAvatarName — the storage policy only
+  // accepts `<uid>/avatar[-a|-b].<ext>`, so the user has no say in where
+  // their file lands or what it is called.
+  //
+  // Order matters: upload into the slot the profile is not using, point the
+  // profile at it, and only then remove the old file. Deleting first (as this
+  // used to) or overwriting in place meant a failed upload or a failed profile
+  // update left the user with no photo at all.
+  const bucket = supabase.storage.from("avatars");
+  const name = nextAvatarName(user.user_metadata?.avatar_url, extensionForType(file.type));
+  const path = `${user.id}/${name}`;
 
-  // Switching file types (e.g. .png -> .jpg) would otherwise leave the old
-  // extension's file behind in storage forever, since upsert only replaces
-  // an exact path match. Clear out any other avatar.* file first.
-  const { data: existingFiles } = await supabase.storage.from("avatars").list(user.id);
-  const staleFiles = (existingFiles ?? [])
-    .filter((f) => f.name !== `avatar.${ext}`)
-    .map((f) => `${user.id}/${f.name}`);
-  if (staleFiles.length > 0) {
-    await supabase.storage.from("avatars").remove(staleFiles);
-  }
-
-  const { error: uploadError } = await supabase.storage
-    .from("avatars")
-    .upload(path, file, { upsert: true, contentType: file.type });
-
+  const { error: uploadError } = await bucket.upload(path, file, {
+    upsert: true,
+    contentType: file.type,
+  });
   if (uploadError) {
     return { error: userMessage("updateAvatar.upload", uploadError), success: false };
   }
 
   const {
     data: { publicUrl },
-  } = supabase.storage.from("avatars").getPublicUrl(path);
+  } = bucket.getPublicUrl(path);
 
   const { error } = await supabase.auth.updateUser({
     data: { ...user.user_metadata, avatar_url: `${publicUrl}?v=${Date.now()}` },
   });
-
   if (error) {
+    // Nothing points at the new file; the old photo was never touched.
+    const { error: undoError } = await bucket.remove([path]);
+    if (undoError) reportError("updateAvatar.undoUpload", undoError);
     return { error: userMessage("updateAvatar.metadata", error), success: false };
   }
+
+  // Best effort: the new photo is already saved, so a cleanup failure is only
+  // logged and the next replacement tries again. Whatever the profile points
+  // at right now is kept too, in case another tab replaced it meanwhile.
+  const {
+    data: { user: latest },
+  } = await supabase.auth.getUser();
+  const keep = new Set([name, avatarFileName(latest?.user_metadata?.avatar_url)]);
+  const { data: files, error: listError } = await bucket.list(user.id);
+  const stale = (files ?? []).filter((f) => !keep.has(f.name)).map((f) => `${user.id}/${f.name}`);
+  const { error: cleanupError } = stale.length ? await bucket.remove(stale) : { error: null };
+  if (listError || cleanupError) reportError("updateAvatar.cleanup", listError ?? cleanupError);
 
   revalidatePath("/profile");
   revalidatePath("/", "layout");

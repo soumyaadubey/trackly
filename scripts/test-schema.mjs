@@ -78,7 +78,7 @@ try {
   sql("postgres", "create role authenticated; create role anon; create database fresh; create database upgraded;");
   for (const db of ["fresh", "upgraded"]) sql(db, bootstrap);
   sql("fresh", file("schema.sql"));
-  for (const name of ["0001_init.sql", "0002_hardening.sql", "0003_account_deletion.sql", "0004_item_url_scheme.sql"]) sql("upgraded", file(`migrations/${name}`));
+  for (const name of ["0001_init.sql", "0002_hardening.sql", "0003_account_deletion.sql", "0004_item_url_scheme.sql", "0005_avatar_slots.sql"]) sql("upgraded", file(`migrations/${name}`));
   assert.deepEqual(JSON.parse(sql("fresh", inspect)), JSON.parse(sql("upgraded", inspect)));
   console.log("PASS fresh schema equals ordered migrations: columns, constraints, indexes, policies, functions, triggers, bucket limits");
   for (const db of ["fresh", "upgraded"]) {
@@ -91,7 +91,7 @@ try {
     const original = sql(db, "select row_to_json(i) from items i;");
     // Only replay a current-state script or migrations after 0002, never restore the old RPC.
     if (db === "fresh") sql(db, file("schema.sql"));
-    else for (const name of ["0003_account_deletion.sql", "0004_item_url_scheme.sql"]) sql(db, file(`migrations/${name}`));
+    else for (const name of ["0003_account_deletion.sql", "0004_item_url_scheme.sql", "0005_avatar_slots.sql"]) sql(db, file(`migrations/${name}`));
     assert.equal(sql(db, "select row_to_json(i) from items i;"), original);
     assert.equal(sql(db, "select to_regprocedure('public.delete_current_user()') is null;"), "t");
     const asOther = `set role authenticated; set request.jwt.claim.sub='${other}';`;
@@ -102,11 +102,19 @@ try {
     assert.throws(() => sql(db, `insert into items(user_id,title,url,kind,status) values ('${owner}','bad','https://example.com','course','interview');`), /items_status_check/);
     assert.throws(() => sql(db, `insert into items(user_id,title,url) values ('${owner}',repeat('x',301),'https://example.com');`), /items_title_len_check/);
     assert.throws(() => sql(db, `insert into items(user_id,title,url) values ('${owner}','bad','javascript:alert(1)');`), /items_url_scheme_check/);
+    const asOwner = `set role authenticated; set request.jwt.claim.sub='${owner}';`;
+    for (const name of ["avatar.png", "avatar-a.webp", "avatar-b.jpg"]) {
+      sql(db, `${asOwner} insert into storage.objects(bucket_id,name) values ('avatars','${owner}/${name}');`);
+    }
+    for (const name of ["avatar-c.png", "photo.png", "avatar-a.svg"]) {
+      assert.throws(() => sql(db, `${asOwner} insert into storage.objects(bucket_id,name) values ('avatars','${owner}/${name}');`), /row-level security/);
+    }
+    assert.throws(() => sql(db, `${asOwner} insert into storage.objects(bucket_id,name) values ('avatars','${other}/avatar-a.png');`), /row-level security/);
     assert.equal(sql(db, "select convalidated from pg_constraint where conname='items_url_scheme_check';"), "t");
     sql(db, `delete from auth.users where id='${owner}';`);
     assert.equal(sql(db, "select count(*) from items;"), "0");
   }
-  console.log("PASS generated text, safe reapplication, timestamp preservation, ownership isolation, constraints (incl. http-only links), cascade deletion, and absent deletion RPC");
+  console.log("PASS generated text, safe reapplication, timestamp preservation, ownership isolation, constraints (incl. http-only links), avatar slot names, cascade deletion, and absent deletion RPC");
 } finally {
   if (started) docker(["rm", "--force", container]);
 }

@@ -27,7 +27,7 @@ export type AllowedAvatarType = (typeof ALLOWED_AVATAR_TYPES)[number];
 /**
  * The extension the file will be stored under. Derived from the (validated)
  * MIME type rather than from the uploaded filename, so a user cannot choose
- * the stored path — the storage policy pins it to `<uid>/avatar.<ext>`.
+ * the stored path — the storage policy pins it to `<uid>/avatar[-a|-b].<ext>`.
  */
 const EXTENSION_BY_TYPE: Record<AllowedAvatarType, string> = {
   "image/jpeg": "jpg",
@@ -48,3 +48,27 @@ export function extensionForType(type: AllowedAvatarType): string {
 
 /** Human-readable list for form copy, e.g. "JPG, PNG, GIF, or WebP". */
 export const AVATAR_TYPES_LABEL = "JPG, PNG, GIF, or WebP";
+
+const AVATAR_NAME = /^avatar(?:-[ab])?\.(?:jpg|png|gif|webp)$/;
+
+/** The stored file name an avatar_url points at, if it is one of ours. */
+export function avatarFileName(url: unknown): string | null {
+  if (typeof url !== "string") return null;
+  try {
+    const name = decodeURIComponent(new URL(url).pathname.split("/").pop() ?? "");
+    return AVATAR_NAME.test(name) ? name : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Where a replacement photo goes: whichever of the two slots the profile is
+ * not using. The current photo is never overwritten, so a failed upload or a
+ * failed profile update leaves it intact. Two slots (not a fresh name per
+ * upload) keep the number of files a user can create bounded.
+ */
+export function nextAvatarName(currentUrl: unknown, ext: string): string {
+  const current = avatarFileName(currentUrl);
+  return `avatar-${current?.startsWith("avatar-a.") ? "b" : "a"}.${ext}`;
+}

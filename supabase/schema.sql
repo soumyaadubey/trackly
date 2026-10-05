@@ -227,8 +227,9 @@ create policy "Avatar images are publicly readable"
   to public
   using (bucket_id = 'avatars');
 
--- The path is constrained to exactly "<uid>/avatar.<ext>" so a user cannot fill
--- the bucket with arbitrarily many arbitrarily named objects inside their folder.
+-- The path is constrained to "<uid>/avatar.<ext>" or one of the two
+-- replacement slots "<uid>/avatar-a.<ext>" / "avatar-b.<ext>", so a user cannot
+-- fill the bucket with arbitrarily many arbitrarily named objects.
 drop policy if exists "Users can upload their own avatar" on storage.objects;
 create policy "Users can upload their own avatar"
   on storage.objects for insert
@@ -236,7 +237,7 @@ create policy "Users can upload their own avatar"
   with check (
     bucket_id = 'avatars'
     and (storage.foldername(name))[1] = (select auth.uid())::text
-    and name ~ ('^' || (select auth.uid())::text || '/avatar\.(jpg|jpeg|png|gif|webp)$')
+    and name ~ ('^' || (select auth.uid())::text || '/avatar(-[ab])?\.(jpg|jpeg|png|gif|webp)$')
   );
 
 drop policy if exists "Users can update their own avatar" on storage.objects;
@@ -250,7 +251,7 @@ create policy "Users can update their own avatar"
   with check (
     bucket_id = 'avatars'
     and (storage.foldername(name))[1] = (select auth.uid())::text
-    and name ~ ('^' || (select auth.uid())::text || '/avatar\.(jpg|jpeg|png|gif|webp)$')
+    and name ~ ('^' || (select auth.uid())::text || '/avatar(-[ab])?\.(jpg|jpeg|png|gif|webp)$')
   );
 
 drop policy if exists "Users can delete their own avatar" on storage.objects;
