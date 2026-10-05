@@ -125,6 +125,18 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
     }
   }
 
+  /**
+   * Drop any lookup still in flight. Called whenever the user edits the link
+   * or the title: a response that arrives afterwards belongs to a link that is
+   * no longer in the field, or would overwrite a title they are typing.
+   */
+  function cancelAutofill() {
+    if (!autofillAbort.current) return;
+    autofillAbort.current.abort();
+    autofillAbort.current = null;
+    setFetchingTitle(false);
+  }
+
   function addTag() {
     const t = tagInput.trim().slice(0, MAX_TAG_LENGTH);
     if (t && !tags.includes(t) && tags.length < MAX_TAGS) {
@@ -153,7 +165,11 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
               name="url"
               type="text"
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={(e) => {
+                setUrl(e.target.value);
+                cancelAutofill();
+                setAutofillError(null);
+              }}
               onBlur={() => {
                 setTouched((t) => ({ ...t, url: true }));
                 void autofillTitle({ overwrite: false });
@@ -194,7 +210,10 @@ export default function ItemForm({ kind, action, initial, submitLabel }: Props) 
             name="title"
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              cancelAutofill();
+            }}
             onBlur={() => setTouched((t) => ({ ...t, title: true }))}
             maxLength={MAX_TITLE_LENGTH}
             className={`field-input ${showTitleError ? "invalid" : ""}`}

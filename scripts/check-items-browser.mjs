@@ -133,3 +133,41 @@ export async function checkItemsBrowser(page, fixture, owner, origin) {
   await page.goto(`${origin}/profile`);
   console.log("PASS 1,207-row CSV/ICS downloads, formula/Unicode escaping, and no partial download on later-batch failure");
 }
+
+// Title autofill must never apply a response the user has moved past: typing a
+// title, or editing the link, while a lookup is still in flight cancels it.
+export async function checkTitleAutofill(page, origin) {
+  const held = [];
+  await page.route("**/api/fetch-title**", (route) => { held.push(route); });
+  const release = async (title) => {
+    const route = held.shift();
+    assert.ok(route, "expected a held title lookup");
+    // The page may already have aborted this request; that is the point.
+    await route.fulfill({ json: { title } }).catch(() => {});
+    await page.waitForTimeout(300);
+  };
+  const link = page.getByLabel("Link", { exact: true });
+  const title = page.getByLabel("Title", { exact: true });
+  const button = page.getByRole("button", { name: /Autofill title|Fetching/ });
+
+  await page.goto(`${origin}/opportunities/new`);
+  await link.fill("https://example.com/a");
+  await link.press("Tab"); // blur starts a lookup for an empty title
+  await assert.doesNotReject(button.filter({ hasText: "Fetching" }).waitFor());
+  await title.pressSequentially("My own title");
+  await release("Fetched A");
+  assert.equal(await title.inputValue(), "My own title");
+
+  await title.fill("");
+  await button.click(); // explicit lookup for /a
+  await link.fill("https://example.com/b"); // edit without leaving the field
+  await release("Fetched A");
+  assert.equal(await title.inputValue(), "");
+  assert.equal(await button.textContent(), "Autofill title");
+
+  await button.click();
+  await release("Fetched B");
+  assert.equal(await title.inputValue(), "Fetched B");
+  await page.unroute("**/api/fetch-title**");
+  console.log("PASS title autofill ignores responses after the title is typed or the link is edited");
+}
