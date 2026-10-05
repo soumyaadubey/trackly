@@ -47,7 +47,12 @@ export async function signup(
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const origin = await getSiteOrigin();
+  const callback = new URL("/auth/confirm", origin);
+  callback.searchParams.set("next", next);
+  const { data, error } = await supabase.auth.signUp({
+    email, password, options: { emailRedirectTo: callback.toString() },
+  });
 
   if (error) {
     return { error: userMessage("signup", error) };
@@ -93,6 +98,10 @@ export async function requestPasswordReset(
 
 export async function logout() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    reportError("logout", error);
+    redirect("/login?error=logout-failed");
+  }
   redirect("/login");
 }

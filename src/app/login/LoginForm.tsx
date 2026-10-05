@@ -12,6 +12,7 @@ import {
   type ResetRequestState,
 } from "./actions";
 import { PAGE_MEASURE } from "@/lib/layout";
+import { AUTH_LINK_MESSAGES } from "@/lib/auth-feedback";
 
 const initialState: AuthState = { error: null };
 const initialResetState: ResetRequestState = { error: null, sent: false };
@@ -24,8 +25,7 @@ export default function LoginForm({
   next = "/",
 }: {
   initialError?: string;
-  /** Which tab to open on. "forgot" is only ever reached from inside the form. */
-  initialMode?: "login" | "signup";
+  initialMode?: Mode;
   /** Already validated by the page via safeNext; re-validated in the action. */
   next?: string;
 }) {
@@ -69,7 +69,7 @@ export default function LoginForm({
               </h2>
               <p className="mb-6 text-[13px] leading-relaxed" style={{ color: "var(--ink-muted)" }}>
                 We sent a confirmation link to finish setting up your account.
-                Click it, then come back and log in.
+                Open it to confirm your email and continue to Trackly.
               </p>
               <button
                 type="button"
@@ -139,9 +139,9 @@ export default function LoginForm({
                 </span>
               </h2>
 
-              {initialError === "reset-link-invalid" && (
-                <p className="field-error mb-4">
-                  That reset link is invalid or has expired. Request a new one below.
+              {initialError && AUTH_LINK_MESSAGES[initialError] && (
+                <p role="alert" className="field-error mb-4">
+                  {AUTH_LINK_MESSAGES[initialError]}
                 </p>
               )}
 
@@ -178,7 +178,7 @@ export default function LoginForm({
                   />
                 </div>
 
-                {state.error && <p className="field-error">{state.error}</p>}
+                {state.error && <p role="alert" className="field-error">{state.error}</p>}
 
                 <button
                   type="submit"

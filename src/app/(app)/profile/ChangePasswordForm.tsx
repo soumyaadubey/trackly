@@ -1,16 +1,19 @@
 "use client";
 
 import { useActionState } from "react";
-import { changePassword, type ChangePasswordState } from "./actions";
+import { changePassword, signOutOtherSessions, type ChangePasswordState } from "./actions";
+import { SESSION_EXPIRY_NOTE } from "@/lib/auth-feedback";
 
 const initialState: ChangePasswordState = { error: null, success: false };
 
 export default function ChangePasswordForm() {
   const [state, formAction, pending] = useActionState(changePassword, initialState);
+  const [sessionState, sessionAction, sessionPending] = useActionState(signOutOtherSessions, initialState);
 
   return (
     // The key resets the inputs once a change succeeds, so the fields don't sit
     // there still holding a password.
+    <>
     <form action={formAction} className="space-y-4" key={state.success ? "done" : "form"}>
       {/* Requiring the current password is what stops a borrowed session from
           becoming a permanent account takeover. */}
@@ -58,11 +61,10 @@ export default function ChangePasswordForm() {
         />
       </div>
 
-      {state.error && <p className="field-error">{state.error}</p>}
+      {state.error && <p role="alert" className="field-error">{state.error}</p>}
       {state.success && (
-        <p className="text-sm" style={{ color: "var(--ink)" }}>
-          Password updated. Any other devices you were signed in on have been
-          signed out.
+        <p role="status" className="text-sm" style={{ color: "var(--ink)" }}>
+          {state.warning ?? "Password updated. Other sessions can no longer refresh their access."}
         </p>
       )}
 
@@ -70,5 +72,14 @@ export default function ChangePasswordForm() {
         {pending ? "Saving…" : "Update password"}
       </button>
     </form>
+    <form action={sessionAction} className="mt-5 space-y-3">
+      <button type="submit" disabled={sessionPending} className="pill-btn-secondary text-[13px]">
+        {sessionPending ? "Signing out…" : "Sign out other sessions"}
+      </button>
+      <p className="text-sm" style={{ color: "var(--ink-muted)" }}>{SESSION_EXPIRY_NOTE}</p>
+      {sessionState.error && <p role="alert" className="field-error">{sessionState.error}</p>}
+      {sessionState.success && <p role="status" className="text-sm">Other sessions can no longer refresh their access.</p>}
+    </form>
+    </>
   );
 }

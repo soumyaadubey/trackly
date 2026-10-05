@@ -78,11 +78,22 @@ alter table public.items add constraint items_tags_check
 
 -- One column the free-text search can point at, so "search titles, tags, notes"
 -- is a single indexed predicate rather than three ORed sequential scans.
+-- array_to_string(anyarray) is STABLE; this text[]-only helper is deterministic.
+create or replace function public.items_search_text(
+  p_title text, p_notes text, p_tags text[]
+)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select p_title || ' ' || coalesce(p_notes, '') || ' ' ||
+         coalesce(array_to_string(p_tags, ' '), '');
+$$;
+
 alter table public.items
   add column if not exists search_text text
-  generated always as (
-    title || ' ' || coalesce(notes, '') || ' ' || array_to_string(tags, ' ')
-  ) stored;
+  generated always as (public.items_search_text(title, notes, tags)) stored;
 
 -- ---------------------------------------------------------------------------
 -- Indexes
@@ -174,34 +185,10 @@ create trigger items_set_updated_at
 -- Self-serve account deletion
 -- ---------------------------------------------------------------------------
 
--- Lets a signed-in user delete their own auth record, which cascades to items.
--- Doing this as a security-definer function scoped to auth.uid() means the app
--- never needs the service_role key, which would otherwise have to be deployed
--- as an environment variable and would grant far more than account deletion.
-create or replace function public.delete_current_user()
-returns void
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  uid uuid := auth.uid();
-begin
-  if uid is null then
-    raise exception 'Not authenticated';
-  end if;
-
-  delete from storage.objects
-    where bucket_id = 'avatars'
-      and (storage.foldername(name))[1] = uid::text;
-
-  -- items rows go with this via the on delete cascade on user_id.
-  delete from auth.users where id = uid;
-end;
-$$;
-
-revoke all on function public.delete_current_user() from public, anon;
-grant execute on function public.delete_current_user() to authenticated;
+-- Deletion is a server-only operation after fresh password verification.
+-- The Storage API removes actual objects before the Auth admin API deletes
+-- the verified user. Keep the old session-only RPC unavailable.
+drop function if exists public.delete_current_user();
 
 -- ---------------------------------------------------------------------------
 -- Avatars storage bucket

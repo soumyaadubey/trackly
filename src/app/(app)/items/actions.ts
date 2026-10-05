@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireUserClient } from "@/lib/auth";
 import { userMessage } from "@/lib/errors";
-import { isKind, isStatusForKind, parseItemForm, KIND_ROUTE, type Kind } from "@/lib/items";
+import { isKind, isStatusForKind, parseItemForm, KIND_ROUTE, type Kind, type RestorableItem } from "@/lib/items";
 
 export type SaveState = { error: string | null };
 
@@ -126,7 +126,7 @@ export async function updateStatus(id: string, status: string): Promise<SaveStat
   return { error: null };
 }
 
-export async function deleteItem(id: string): Promise<SaveState> {
+export async function deleteItem(id: string): Promise<SaveState & { deleted?: RestorableItem }> {
   const { supabase, user } = await requireUserClient();
 
   const { data: deleted, error } = await supabase
@@ -134,8 +134,8 @@ export async function deleteItem(id: string): Promise<SaveState> {
     .delete()
     .eq("id", id)
     .eq("user_id", user.id)
-    .select("kind")
-    .maybeSingle<{ kind: Kind }>();
+    .select("id,kind,title,url,status,tags,deadline,notes,created_at,updated_at")
+    .maybeSingle<RestorableItem>();
 
   if (error) {
     return { error: userMessage("deleteItem", error) };
@@ -146,7 +146,7 @@ export async function deleteItem(id: string): Promise<SaveState> {
 
   revalidatePath(KIND_ROUTE[deleted.kind]);
   revalidatePath("/");
-  return { error: null };
+  return { error: null, deleted };
 }
 
 /**
@@ -154,17 +154,10 @@ export async function deleteItem(id: string): Promise<SaveState> {
  * undo instead of a blocking confirm() dialog. The id is reused, which keeps
  * any link to /items/<id>/edit working.
  */
-export async function restoreItem(item: {
-  id: string;
-  kind: Kind;
-  title: string;
-  url: string;
-  status: string;
-  tags: string[];
-  deadline: string | null;
-  notes: string | null;
-}): Promise<SaveState> {
-  if (!isKind(item.kind) || !isStatusForKind(item.kind, item.status)) {
+export async function restoreItem(item: RestorableItem): Promise<SaveState> {
+  if (!item || !isKind(item.kind) || !isStatusForKind(item.kind, item.status) ||
+      typeof item.created_at !== "string" || !Number.isFinite(Date.parse(item.created_at)) ||
+      typeof item.updated_at !== "string" || !Number.isFinite(Date.parse(item.updated_at))) {
     return { error: "That item can't be restored." };
   }
 
@@ -180,6 +173,8 @@ export async function restoreItem(item: {
     tags: item.tags,
     deadline: item.deadline,
     notes: item.notes,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
   });
 
   if (error) {

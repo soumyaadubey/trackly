@@ -56,3 +56,20 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
           NEXT_PUBLIC_SITE_URL: https://example.com
+
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Browser contracts (isolated Auth and data fixtures)
+        run: npm run test:auth-browser
+      - name: Schema, migrations, and database ownership (disposable PostgreSQL)
+        run: npm run test:schema

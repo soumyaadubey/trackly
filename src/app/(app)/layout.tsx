@@ -1,5 +1,6 @@
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import ItemUndoProvider from "@/components/ItemUndoProvider";
 
 /**
  * Everything behind the sign-in wall: the three lists, the item form, profile.
@@ -13,10 +14,10 @@ import SiteFooter from "@/components/SiteFooter";
  */
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
-    <>
+    <ItemUndoProvider>
       <SiteHeader />
       <div className="flex-1">{children}</div>
       <SiteFooter />
-    </>
+    </ItemUndoProvider>
   );
 }

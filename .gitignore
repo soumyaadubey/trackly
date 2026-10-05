@@ -47,6 +47,7 @@ CLAUDE.md
 
 # Local-only engineering docs (review notes, remediation tracking)
 REVIEW.md
+/TRACKLY-PLAN.local.md
 
 # Supabase CLI scratch
 supabase/.temp/

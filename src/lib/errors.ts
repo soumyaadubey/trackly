@@ -18,6 +18,12 @@ type Loggable = {
 };
 
 const FRIENDLY_BY_CODE: Record<string, string> = {
+  weak_password: "Choose a stronger password that meets the account's password requirements.",
+  same_password: "Choose a password different from your current one.",
+  current_password_required: "Enter your current password before changing it.",
+  current_password_mismatch: "That current password isn't right.",
+  reauthentication_needed: "Please log in again before changing your password.",
+  over_request_rate_limit: "Too many attempts. Wait a moment and try again.",
   // check_violation — a per-kind status rule or a length limit.
   "23514": "That value isn't allowed here. Check the status and field lengths.",
   // unique_violation

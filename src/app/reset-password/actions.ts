@@ -1,10 +1,10 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { reportError, userMessage } from "@/lib/errors";
+import { getRecoveryUser } from "@/lib/recovery";
 
-export type ResetState = { error: string | null };
+export type ResetState = { error: string | null; success?: boolean; warning?: string };
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -24,15 +24,8 @@ export async function updatePassword(
 
   const supabase = await createClient();
 
-  // Reaching this page means a reset token was already exchanged for a session
-  // at /auth/confirm. If that session is missing the link was never valid, and
-  // updateUser would otherwise fail with a confusing message.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login?error=reset-link-invalid");
+  if (!(await getRecoveryUser(supabase))) {
+    return { error: "Open a fresh password-reset email to continue. Recovery access lasts 15 minutes." };
   }
 
   const { error } = await supabase.auth.updateUser({ password });
@@ -41,12 +34,12 @@ export async function updatePassword(
     return { error: userMessage("updatePassword", error) };
   }
 
-  // A reset is the other half of a compromise recovery: drop every other
-  // session so an attacker who still holds one is evicted.
-  const { error: signOutError } = await supabase.auth.signOut({ scope: "others" });
+  // End the recovery session too; sign in again using the new password.
+  const { error: signOutError } = await supabase.auth.signOut({ scope: "global" });
   if (signOutError) {
-    reportError("updatePassword.signOutOthers", signOutError);
+    reportError("updatePassword.signOutAll", signOutError);
+    await supabase.auth.signOut({ scope: "local" });
+    return { error: null, success: true, warning: "Your password changed, but we couldn't confirm sign-out on all devices. Log in and retry signing out other sessions from Profile." };
   }
-
-  redirect("/opportunities");
+  return { error: null, success: true };
 }

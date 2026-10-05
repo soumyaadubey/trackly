@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import { userMessage, reportError } from "@/lib/errors";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { removeAccountData } from "@/lib/delete-account";
 import {
   AVATAR_TYPES_LABEL,
   MAX_AVATAR_BYTES,
@@ -12,7 +14,7 @@ import {
   isAllowedAvatarType,
 } from "@/lib/avatar";
 
-export type ChangePasswordState = { error: string | null; success: boolean };
+export type ChangePasswordState = { error: string | null; success: boolean; warning?: string };
 export type ProfileState = { error: string | null; success: boolean };
 export type DeleteAccountState = { error: string | null };
 
@@ -125,8 +127,7 @@ export async function updateAvatar(
  * could set a new password, and Supabase's "Secure password change" setting —
  * which would have required reauthentication — is off by default.
  *
- * On success every other session is revoked, so a password change also evicts
- * whoever prompted it.
+ * Provider current-password enforcement must also be enabled for direct API calls.
  */
 export async function changePassword(
   _prevState: ChangePasswordState,
@@ -159,19 +160,18 @@ export async function changePassword(
     return { error: "This account has no email address to verify against.", success: false };
   }
 
-  // Supabase has no dedicated "verify password" endpoint; re-signing in is the
-  // supported way to prove possession of the current credential.
-  const { error: reauthError } = await supabase.auth.signInWithPassword({
+  // A fresh session also satisfies the provider's secure-password-change window.
+  const { data: reauthenticated, error: reauthError } = await supabase.auth.signInWithPassword({
     email: user.email,
     password: currentPassword,
   });
 
-  if (reauthError) {
+  if (reauthError || reauthenticated.user?.id !== user.id) {
     reportError("changePassword.reauth", reauthError);
     return { error: "That current password isn't right.", success: false };
   }
 
-  const { error } = await supabase.auth.updateUser({ password });
+  const { error } = await supabase.auth.updateUser({ password, current_password: currentPassword });
 
   if (error) {
     return { error: userMessage("changePassword.update", error), success: false };
@@ -182,6 +182,8 @@ export async function changePassword(
   const { error: signOutError } = await supabase.auth.signOut({ scope: "others" });
   if (signOutError) {
     reportError("changePassword.signOutOthers", signOutError);
+    revalidatePath("/profile");
+    return { error: null, success: true, warning: "Password updated, but we couldn't confirm sign-out on other devices. Retry below." };
   }
 
   revalidatePath("/profile");
@@ -196,8 +198,8 @@ export async function changePassword(
  * which is linked nowhere. Beyond the broken promise, GDPR Article 17 expects
  * a working erasure path.
  *
- * The delete runs through a security-definer function scoped to auth.uid()
- * (see supabase/schema.sql), so the app never needs a service_role key.
+ * The server alone holds deletion authority. The old public RPC must be removed
+ * by migration 0003 so callers cannot skip fresh password verification.
  */
 export async function deleteAccount(
   _prevState: DeleteAccountState,
@@ -220,22 +222,36 @@ export async function deleteAccount(
     return { error: "This account has no email address to verify against." };
   }
 
-  const { error: reauthError } = await supabase.auth.signInWithPassword({
+  const { data: reauthenticated, error: reauthError } = await supabase.auth.signInWithPassword({
     email: user.email,
     password,
   });
 
-  if (reauthError) {
+  if (reauthError || reauthenticated.user?.id !== user.id) {
     reportError("deleteAccount.reauth", reauthError);
     return { error: "That password isn't right." };
   }
 
-  const { error } = await supabase.rpc("delete_current_user");
-
-  if (error) {
-    return { error: userMessage("deleteAccount", error) };
+  const admin = createAdminClient();
+  if (!admin) {
+    reportError("deleteAccount.configuration", new Error("SUPABASE_SECRET_KEY is not configured"));
+    return { error: "Account deletion is temporarily unavailable. Please try again later." };
+  }
+  try {
+    await removeAccountData(admin, user.id);
+  } catch (error) {
+    const ref = reportError("deleteAccount", error);
+    return { error: `Couldn't finish deleting your account. Some profile photos may already be removed; retry to finish. (ref: ${ref})` };
   }
 
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: "local" });
   redirect("/?deleted=1");
+}
+
+export async function signOutOtherSessions(): Promise<ChangePasswordState> {
+  await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signOut({ scope: "others" });
+  if (error) return { error: userMessage("signOutOtherSessions", error), success: false };
+  return { error: null, success: true };
 }

@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { reportError } from "@/lib/errors";
 import { buildCalendar, type IcsItem } from "@/lib/ics";
-import { KIND_CONFIG, KINDS, type Item } from "@/lib/items";
+import { KIND_CONFIG, type Item } from "@/lib/items";
+import { ExportTooLargeError, readExportItems } from "@/lib/export-items";
 
 /**
  * Every live deadline as an .ics file.
@@ -26,24 +27,15 @@ export async function GET() {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 
-  // The union across kinds, so the filter runs in SQL. Statuses share names
-  // between kinds ("saved", "in_progress") without sharing meaning, so the
-  // per-kind check below narrows it to exactly right afterwards.
-  const activeStatuses = Array.from(
-    new Set(KINDS.flatMap((kind) => KIND_CONFIG[kind].activeStatuses)),
-  );
-
   const supabase = await createClient();
-  const { data: items, error } = await supabase
-    .from("items")
-    .select("*")
-    .eq("user_id", user.id)
-    .not("deadline", "is", null)
-    .in("status", activeStatuses)
-    .order("deadline", { ascending: true })
-    .returns<Item[]>();
-
-  if (error) {
+  let items: Item[];
+  try {
+    items = await readExportItems(supabase, user.id, true);
+    items.sort((a, b) => (a.deadline ?? "").localeCompare(b.deadline ?? "") || a.id.localeCompare(b.id));
+  } catch (error) {
+    if (error instanceof ExportTooLargeError) {
+      return NextResponse.json({ error: error.message }, { status: 413 });
+    }
     const ref = reportError("calendar-export", error);
     return NextResponse.json(
       { error: `Couldn't build the calendar. (ref: ${ref})` },

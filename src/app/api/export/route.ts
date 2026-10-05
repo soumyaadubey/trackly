@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { reportError } from "@/lib/errors";
 import type { Item } from "@/lib/items";
+import { ExportTooLargeError, readExportItems } from "@/lib/export-items";
 
 /**
  * Neutralise spreadsheet formula injection.
@@ -37,15 +38,15 @@ export async function GET() {
   }
 
   const supabase = await createClient();
-  const { data: items, error } = await supabase
-    .from("items")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("kind")
-    .order("created_at")
-    .returns<Item[]>();
-
-  if (error) {
+  let items: Item[];
+  try {
+    items = await readExportItems(supabase, user.id);
+    items.sort((a, b) => a.kind.localeCompare(b.kind) ||
+      a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
+  } catch (error) {
+    if (error instanceof ExportTooLargeError) {
+      return NextResponse.json({ error: error.message }, { status: 413 });
+    }
     const ref = reportError("export", error);
     return NextResponse.json(
       { error: `Couldn't build the export. (ref: ${ref})` },

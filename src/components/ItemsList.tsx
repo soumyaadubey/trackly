@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
   deadlineIsActionable,
@@ -53,8 +54,8 @@ export default async function ItemsList({ kind, searchParams }: Props) {
     typeof searchParams.tag === "string" && searchParams.tag.trim()
       ? searchParams.tag.trim().slice(0, MAX_TAG_LENGTH)
       : null;
-  const rawPage = typeof searchParams.page === "string" ? parseInt(searchParams.page, 10) : 1;
-  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+  const rawPage = typeof searchParams.page === "string" ? Number(searchParams.page) : 1;
+  const page = Number.isSafeInteger(rawPage) && rawPage > 0 && rawPage <= Math.floor(Number.MAX_SAFE_INTEGER / ITEMS_PER_PAGE) ? rawPage : 1;
 
   const supabase = await createClient();
 
@@ -71,7 +72,8 @@ export default async function ItemsList({ kind, searchParams }: Props) {
     .select("*", { count: "exact" })
     .eq("kind", kind)
     .in("status", statusesToQuery)
-    .order("deadline", { ascending: true, nullsFirst: false });
+    .order("deadline", { ascending: true, nullsFirst: false })
+    .order("id", { ascending: true });
 
   if (q) {
     // search_text is a generated column (title + notes + tags) with a trigram
@@ -127,7 +129,7 @@ export default async function ItemsList({ kind, searchParams }: Props) {
       .in("status", config.archiveStatuses),
   ]);
 
-  if (error) {
+  if (error && error.code !== "PGRST103") {
     reportError("ItemsList.query", error);
   }
 
@@ -144,6 +146,12 @@ export default async function ItemsList({ kind, searchParams }: Props) {
     if (tagFilter) params.set("tag", tagFilter);
     if (targetPage > 1) params.set("page", String(targetPage));
     return `${route}?${params.toString()}`;
+  }
+
+  // PostgREST can report an out-of-range offset as 416/PGRST103. Preserve
+  // filters and recover after deleting the last row of a page.
+  if (page > 1 && ((!error && page > totalPages) || error?.code === "PGRST103")) {
+    redirect(pageHref(error ? 1 : totalPages));
   }
 
   function tagHref(tag: string) {

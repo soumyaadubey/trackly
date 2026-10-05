@@ -66,7 +66,7 @@ export default function DeleteAccountForm() {
         />
       </div>
 
-      {state.error && <p className="field-error">{state.error}</p>}
+      {state.error && <p role="alert" className="field-error">{state.error}</p>}
 
       <div className="flex items-center gap-2.5">
         <button type="submit" disabled={pending} className="pill-btn-delete text-[13px]">

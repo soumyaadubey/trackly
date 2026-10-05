@@ -30,9 +30,14 @@ export async function updateSession(request: NextRequest) {
   const isLoggedIn = !!data?.claims;
 
   const pathname = request.nextUrl.pathname;
-  const PUBLIC_PATHS = ["/login", "/privacy", "/terms", "/auth/confirm"];
-  const isPublicPath = pathname === "/" || PUBLIC_PATHS.some((p) => pathname.startsWith(p));
-  const isAuthRoute = pathname.startsWith("/login");
+  const PUBLIC_PATHS = ["/login", "/privacy", "/terms", "/auth/confirm", "/reset-password"];
+  const isPublicPath = pathname === "/" || PUBLIC_PATHS.includes(pathname);
+  const isAuthRoute = pathname === "/login";
+  function redirectWithCookies(url: URL) {
+    const redirected = NextResponse.redirect(url);
+    response.cookies.getAll().forEach((cookie) => redirected.cookies.set(cookie));
+    return redirected;
+  }
 
   if (!isLoggedIn && !isPublicPath) {
     const url = request.nextUrl.clone();
@@ -47,13 +52,16 @@ export async function updateSession(request: NextRequest) {
     if (intended !== "/" && !intended.startsWith("/api/")) {
       url.searchParams.set("next", intended);
     }
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
 
-  if (isLoggedIn && isAuthRoute) {
+  // Error/recovery pages must remain reachable even with an existing session.
+  if (isLoggedIn && isAuthRoute && !request.nextUrl.searchParams.has("error") &&
+      request.nextUrl.searchParams.get("mode") !== "forgot") {
     const url = request.nextUrl.clone();
     url.pathname = "/opportunities";
-    return NextResponse.redirect(url);
+    url.search = "";
+    return redirectWithCookies(url);
   }
 
   return response;

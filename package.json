@@ -8,7 +8,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:auth-browser": "node scripts/test-auth-browser.mjs",
+    "test:schema": "node scripts/test-schema.mjs",
+    "test:auth-provider": "node scripts/test-auth-provider.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",

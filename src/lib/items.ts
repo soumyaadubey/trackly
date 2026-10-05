@@ -144,6 +144,8 @@ export function isStatusForKind(kind: Kind, value: string): boolean {
   return KIND_CONFIG[kind].statuses.includes(value);
 }
 
+export type RestorableItem = Omit<Item, "user_id">;
+
 export function parseTags(raw: FormDataEntryValue | null): string[] {
   const seen = new Set<string>();
   return String(raw ?? "")
