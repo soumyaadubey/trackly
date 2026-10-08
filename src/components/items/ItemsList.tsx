@@ -13,12 +13,12 @@ import {
   type Kind,
 } from "@/lib/items";
 import { reportError } from "@/lib/errors";
-import StatusSelect from "@/components/StatusSelect";
-import DeleteButton from "@/components/DeleteButton";
-import DeadlineBadge from "@/components/DeadlineBadge";
-import ItemTitleLink from "@/components/ItemTitleLink";
+import StatusSelect from "@/components/items/StatusSelect";
+import DeleteButton from "@/components/items/DeleteButton";
+import DeadlineBadge from "@/components/items/DeadlineBadge";
+import ItemTitleLink from "@/components/items/ItemTitleLink";
 import { getViewerToday } from "@/lib/viewer-date";
-import { KIND_ICON } from "@/components/icons";
+import { KIND_ICON } from "@/components/ui/icons";
 import { PAGE_MEASURE } from "@/lib/layout";
 
 type Props = {

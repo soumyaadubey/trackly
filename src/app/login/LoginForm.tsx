@@ -2,8 +2,8 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import ThemeToggle from "@/components/ThemeToggle";
-import Logo from "@/components/Logo";
+import ThemeToggle from "@/components/ui/ThemeToggle";
+import Logo from "@/components/ui/Logo";
 import {
   login,
   signup,

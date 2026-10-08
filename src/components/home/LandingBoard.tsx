@@ -1,5 +1,5 @@
-import { KIND_ICON } from "@/components/icons";
-import { URGENCY_STYLE } from "@/components/urgency-styles";
+import { KIND_ICON } from "@/components/ui/icons";
+import { URGENCY_STYLE } from "@/components/items/urgency-styles";
 import {
   addDays,
   deadlineUrgency,

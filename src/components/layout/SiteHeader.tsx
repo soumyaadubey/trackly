@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
-import ThemeToggle from "@/components/ThemeToggle";
-import AccountMenu from "@/components/AccountMenu";
-import NavLinks from "@/components/NavLinks";
-import Logo from "@/components/Logo";
+import ThemeToggle from "@/components/ui/ThemeToggle";
+import AccountMenu from "@/components/layout/AccountMenu";
+import NavLinks from "@/components/layout/NavLinks";
+import Logo from "@/components/ui/Logo";
 import { PAGE_MEASURE } from "@/lib/layout";
 
 /**

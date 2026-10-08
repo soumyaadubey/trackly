@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useItemDelete } from "@/components/ItemUndoProvider";
+import { useItemDelete } from "@/components/items/ItemUndoProvider";
 import type { Item } from "@/lib/items";
 
 export default function DeleteButton({ item }: { item: Item }) {

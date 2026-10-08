@@ -1,4 +1,4 @@
-import NewItemPage from "@/components/NewItemPage";
+import NewItemPage from "@/components/items/NewItemPage";
 
 export default function Page() {
   return <NewItemPage kind="opportunity" />;

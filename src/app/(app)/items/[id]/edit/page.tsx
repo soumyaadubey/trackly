@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import ItemForm from "@/components/ItemForm";
+import ItemForm from "@/components/items/ItemForm";
 import { updateItem } from "@/app/(app)/items/actions";
 import { KIND_CONFIG, KIND_ROUTE, type Item } from "@/lib/items";
-import { KIND_ICON } from "@/components/icons";
+import { KIND_ICON } from "@/components/ui/icons";
 
 export default async function EditItemPage(props: PageProps<"/items/[id]/edit">) {
   const { id } = await props.params;

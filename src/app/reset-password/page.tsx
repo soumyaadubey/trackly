@@ -2,8 +2,8 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import Logo from "@/components/Logo";
-import ThemeToggle from "@/components/ThemeToggle";
+import Logo from "@/components/ui/Logo";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 import { updatePassword, type ResetState } from "./actions";
 import { PAGE_MEASURE } from "@/lib/layout";
 import { SESSION_EXPIRY_NOTE } from "@/lib/auth-feedback";

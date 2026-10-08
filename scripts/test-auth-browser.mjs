@@ -7,7 +7,7 @@ import { once } from "node:events";
 import { mkdir } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright";
-import { captureScreens, createItemsFixture, checkConflictingEdits, checkEmptyStates, checkItemsBrowser, checkLinkValidation, checkNavigation, checkNextSteps, checkTitleAutofill } from "./check-items-browser.mjs";
+import { captureScreens, createItemsFixture, checkConflictingEdits, checkEmptyStates, checkItemsBrowser, checkLinkValidation, checkNavigation, checkNextSteps, checkTitleAutofill } from "./helpers/check-items-browser.mjs";
 
 const origin = "http://localhost:3111";
 const provider = "http://localhost:54329";

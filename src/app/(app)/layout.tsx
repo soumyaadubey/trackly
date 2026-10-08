@@ -1,6 +1,6 @@
-import SiteHeader from "@/components/SiteHeader";
-import SiteFooter from "@/components/SiteFooter";
-import ItemUndoProvider from "@/components/ItemUndoProvider";
+import SiteHeader from "@/components/layout/SiteHeader";
+import SiteFooter from "@/components/layout/SiteFooter";
+import ItemUndoProvider from "@/components/items/ItemUndoProvider";
 
 /**
  * Everything behind the sign-in wall: the three lists, the item form, profile.

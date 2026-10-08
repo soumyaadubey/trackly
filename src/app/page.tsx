@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { PAGE_MEASURE } from "@/lib/layout";
-import ThemeToggle from "@/components/ThemeToggle";
-import Home from "@/components/Home";
-import SiteHeader from "@/components/SiteHeader";
-import SiteFooter from "@/components/SiteFooter";
-import LandingBoard from "@/components/LandingBoard";
-import Logo from "@/components/Logo";
-import { ClockIcon, ExitIcon, LinkIcon } from "@/components/icons";
+import ThemeToggle from "@/components/ui/ThemeToggle";
+import Home from "@/components/home/Home";
+import SiteHeader from "@/components/layout/SiteHeader";
+import SiteFooter from "@/components/layout/SiteFooter";
+import LandingBoard from "@/components/home/LandingBoard";
+import Logo from "@/components/ui/Logo";
+import { ClockIcon, ExitIcon, LinkIcon } from "@/components/ui/icons";
 
 export default async function RootPage() {
   const user = await getCurrentUser();

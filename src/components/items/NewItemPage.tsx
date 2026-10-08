@@ -1,7 +1,7 @@
-import ItemForm from "@/components/ItemForm";
+import ItemForm from "@/components/items/ItemForm";
 import { createItem } from "@/app/(app)/items/actions";
 import { KIND_CONFIG, type Kind } from "@/lib/items";
-import { KIND_ICON } from "@/components/icons";
+import { KIND_ICON } from "@/components/ui/icons";
 
 /**
  * The "add an item" screen for any kind.

@@ -100,7 +100,7 @@ log-redaction verification, and operational measurements remain planned work.
 | [src/lib/auth.ts](../src/lib/auth.ts) | Shared authentication helpers |
 | [src/lib/items.ts](../src/lib/items.ts) | Kind configuration, validation, date helpers |
 | [item actions](../src/app/(app)/items/actions.ts) | Item mutations |
-| [ItemsList.tsx](../src/components/ItemsList.tsx) | List queries and rendering |
+| [ItemsList.tsx](../src/components/items/ItemsList.tsx) | List queries and rendering |
 | [src/lib/ics.ts](../src/lib/ics.ts) | Calendar serialization |
 | [src/lib/delete-account.ts](../src/lib/delete-account.ts) | Account cleanup |
 | [migrations](../supabase/migrations/) | Database changes in order |

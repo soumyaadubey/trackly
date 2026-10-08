@@ -12,10 +12,10 @@ import {
   type NextStep,
 } from "@/lib/items";
 import { reportError } from "@/lib/errors";
-import DeadlineBadge from "@/components/DeadlineBadge";
-import ItemTitleLink from "@/components/ItemTitleLink";
+import DeadlineBadge from "@/components/items/DeadlineBadge";
+import ItemTitleLink from "@/components/items/ItemTitleLink";
 import { getViewerToday } from "@/lib/viewer-date";
-import { KIND_ICON } from "@/components/icons";
+import { KIND_ICON } from "@/components/ui/icons";
 import { PAGE_MEASURE } from "@/lib/layout";
 
 /** Rows shown per dashboard section; the header and "More" links carry the full counts. */

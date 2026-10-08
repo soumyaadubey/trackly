@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { deadlineUrgency, formatDeadline, localToday } from "@/lib/items";
-import { URGENCY_STYLE } from "@/components/urgency-styles";
+import { URGENCY_STYLE } from "@/components/items/urgency-styles";
 
 // Nothing to subscribe to — the viewer's calendar date doesn't change while
 // they're looking at the page (a rollover at midnight resolves on next navigation).

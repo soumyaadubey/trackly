@@ -88,3 +88,53 @@ closure during navigation but completed all assertions and browser-error checks.
 Unit tests, typechecking, and production build were not repeated for this removal.
 No provider/database changes or deployment were performed. The local development
 server was restarted and `Invoke-WebRequest http://localhost:3000` returned 200.
+
+## Project tree cleanup — 2026-10-08
+
+Implementation: local working tree based on `95759ae`, initially clean. Grouped
+19 shared component files under `home`, `items`, `layout`, and `ui`; moved the
+browser-test helper to `scripts/helpers`; updated imports and documentation; and
+removed the unreferenced `src/lib/supabase/client.ts` wrapper. Routes and component
+behavior are unchanged. Compared moved files with the base revision: component
+changes are limited to imports and line endings, and browser-helper content is
+identical.
+
+Local verification on Windows, Node.js 24.18.0:
+
+| Command | Result |
+| --- | --- |
+| `npm.cmd run lint` | Passed |
+| `npx.cmd next typegen` then `npx.cmd tsc --noEmit` | Passed |
+| `npm.cmd test` | All 210 tests across 14 files passed |
+| `npm.cmd run build` | First attempt blocked by a locked development-server log; passed after stopping the existing local server |
+| `npm.cmd run test:auth-browser` | First attempt blocked by the existing dev server; passed after stopping it, using disposable local Auth/Storage/PostgREST fixtures |
+| `git diff --check` | Passed |
+
+Browser checks covered authentication, item mutations, pending/error/retry flows,
+exports, edit conflicts, and desktop/mobile keyboard navigation. A destination
+stream closure was logged during navigation; the suite completed all assertions
+and browser-error checks successfully.
+
+Provider/database verification: real-provider and schema checks were not run;
+the browser suite used isolated local fixtures. No database changes were made.
+
+Deployment: not performed. These results apply to the local cleanup working tree.
+The local development server was restarted with `npm.cmd run dev -- --port 3000`;
+`Invoke-WebRequest http://localhost:3000 -UseBasicParsing` returned HTTP 200.
+
+## README refresh — 2026-10-08
+
+Implementation: documentation-only follow-up on the cleanup working tree based
+on `95759ae`. Updated the README against current source, package scripts, schema,
+and CI configuration: next steps, title navigation, undo lifetime, edit conflicts,
+paginated exports and their limits, reorganized directories, and integration checks.
+Removed completed work from the planned-work list.
+
+Local verification on Windows, Node.js 24.18.0: an inline Node.js check run via
+PowerShell (`@'…'@ | node`) validated README local links/anchors, code fences,
+documented npm scripts, and component directories. `git diff --check -- README.md
+docs/verification.md` passed. Application tests, lint, typechecking, build, and
+browser checks were not repeated for this documentation-only change.
+
+Provider/database verification: not run. Deployment: not performed. CI descriptions
+reflect workflow configuration, not a new observed hosted CI result.
