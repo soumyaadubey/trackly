@@ -218,6 +218,13 @@ export async function checkLinkValidation(page, fixture, owner, origin) {
   await page.getByText("Stored unsafe link", { exact: true }).waitFor();
   assert.equal(await page.locator('a[href^="javascript:" i]').count(), 0);
   assert.equal(await page.getByRole("link", { name: "Open the Stored unsafe link page in a new tab" }).count(), 0);
+  assert.equal(await page.getByRole("link", { name: "Stored unsafe link", exact: true }).count(), 0);
+  await page.getByRole("link", { name: "Edit", exact: true }).waitFor();
+  await page.goto(`${origin}/`);
+  await page.getByText("Stored unsafe link", { exact: true }).waitFor();
+  assert.equal(await page.locator('a[href^="javascript:" i]').count(), 0);
+  assert.equal(await page.getByRole("link", { name: "Stored unsafe link", exact: true }).count(), 0);
+  assert.equal(await page.locator('a[href$="/edit"]').count(), 0);
 
   await page.goto(`${origin}/opportunities/new`);
   await page.getByLabel("Link", { exact: true }).fill("not a link");
@@ -268,11 +275,16 @@ export async function checkConflictingEdits(page, fixture, owner, origin) {
   console.log("PASS conflicting edits are refused, the draft is kept, and a reloaded save succeeds");
 }
 
-// The title opens the item; the external page has its own Open action; the
-// nav says where you are, including Overview and while editing.
+// Titles open the saved website from both views; Edit is only on the list.
+// Stub the destination so no external website is needed for this check.
 export async function checkNavigation(page, fixture, owner, origin) {
   fixture.seed(owner, 1);
   const item = fixture.rows[0];
+  item.url = "https://application.example.test/apply";
+  item.deadline = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+  await page.context().route("https://application.example.test/**", (route) =>
+    route.fulfill({ contentType: "text/html", body: "<h1>Application website</h1>" }),
+  );
   await page.goto(`${origin}/`, { waitUntil: "networkidle" });
   const nav = page.getByRole("navigation", { name: "Sections" }).first();
   assert.equal(await nav.getByRole("link", { name: "Overview" }).getAttribute("aria-current"), "page");
@@ -283,14 +295,48 @@ export async function checkNavigation(page, fixture, owner, origin) {
   assert.equal(await open.getAttribute("href"), item.url);
   assert.equal(await open.getAttribute("target"), "_blank");
 
-  await page.getByRole("link", { name: item.title, exact: true }).click();
-  await page.waitForURL(`${origin}/items/${item.id}/edit`);
-  await page.getByRole("link", { name: "← Opportunities" }).click();
-  await page.waitForURL(`${origin}/opportunities`);
+  for (const mobile of [false, true]) {
+    await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1280, height: 900 });
+    for (const path of ["/opportunities", "/"]) {
+      await page.goto(`${origin}${path}`, { waitUntil: "networkidle" });
+      const title = page.getByRole("link", { name: item.title, exact: true });
+      assert.equal(await title.getAttribute("href"), item.url);
+      assert.equal(await title.getAttribute("target"), "_blank");
+      assert.match(await title.getAttribute("rel"), /noopener/);
+      const popupPromise = page.waitForEvent("popup");
+      if (mobile) {
+        await title.focus();
+        await page.keyboard.press("Enter");
+      } else {
+        await title.click();
+      }
+      const popup = await popupPromise;
+      await popup.getByRole("heading", { name: "Application website" }).waitFor();
+      assert.equal(popup.url(), item.url);
+      assert.equal(await popup.evaluate(() => window.opener === null), true);
+      assert.equal(new URL(page.url()).pathname, path);
+      await popup.close();
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+      await mkdir(".next/test-artifacts", { recursive: true });
+      await page.screenshot({ path: `.next/test-artifacts/title-links-${path === "/" ? "home" : "list"}-${mobile ? "mobile" : "desktop"}.png` });
+      if (path === "/") {
+        assert.equal(await page.locator('a[href$="/edit"]').count(), 0);
+      } else {
+        const edit = page.getByRole("link", { name: "Edit", exact: true });
+        await edit.focus();
+        await page.keyboard.press("Enter");
+        await page.waitForURL(`${origin}/items/${item.id}/edit`);
+        await page.getByRole("link", { name: "← Opportunities" }).click();
+        await page.waitForURL(`${origin}/opportunities`);
+      }
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
   await nav.getByRole("link", { name: "Overview" }).click();
   await page.waitForURL(`${origin}/`);
+  await page.context().unroute("https://application.example.test/**");
   fixture.seed(owner, 0);
-  console.log("PASS Overview link, current-section marking, title opens the item, separate Open action, back link from edit");
+  console.log("PASS title opens website from list/dashboard, Edit only on list, desktop/mobile keyboard navigation, Overview and back links");
 }
 
 // Opt-in (TRACKLY_SCREENSHOTS=1): signed-in screens in both themes at desktop

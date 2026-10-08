@@ -45,3 +45,46 @@ For benchmarks, include seed generation, data distribution, hardware/service
 tier, concurrency, warm/cold behavior, p50/p95 latency, and errors. Label synthetic
 traffic separately from actual usage. For a user pilot, define activation and
 weekly retention, report cohort size and observation period, and omit personal data.
+
+## Item title navigation — 2026-10-08
+
+Implementation: local working tree based on `999072a`, changing `Home.tsx`,
+`ItemsList.tsx`, adding `ItemTitleLink.tsx`, and updating the existing navigation
+browser checks. Titles open validated saved websites in new tabs; editing has a
+separate link on item lists only. Invalid stored URLs render as plain title text.
+
+Local verification on Windows, Node.js 24.18.0:
+
+| Command | Result |
+| --- | --- |
+| `npm.cmd run lint` | Passed |
+| `npx.cmd next typegen` then `npx.cmd tsc --noEmit` | Passed |
+| `npm.cmd test` | Initial run: 209 passed, one existing date-format test timed out; repeat: all 210 tests across 14 files passed |
+| `npm.cmd run test:auth-browser` | Initial restricted run interrupted after font download failures; rerun with network access passed using local Auth/Storage/PostgREST fixtures |
+| `npm.cmd run build` | Passed with network access for Google Fonts |
+| `git diff --check` | Passed |
+
+The browser checks opened a stubbed application website by mouse and keyboard
+from the dashboard and Opportunities list at desktop and mobile widths, verified
+that Trackly remained open and Edit reached the form, and checked overflow and
+unsafe stored links. The existing suite also passed its pending/error/retry flows.
+Screenshots were captured during the browser run but cleared by the later build;
+no retained screenshot review is claimed.
+
+Provider/database verification: not run for this navigation change; the browser
+suite used disposable local fixture data. Production build success does not
+establish live provider behavior.
+
+Deployment: not performed. The live site still needs this application change
+deployed; no database migration is required for the title-link fix.
+
+Follow-up on 2026-10-08, same base revision and Windows environment: removed the
+dashboard Edit action at the user's request and updated the existing browser
+checks. `npm.cmd run lint`, `npm.cmd run test:auth-browser`, and
+`git diff --check` passed. The browser run verified no dashboard edit links,
+list editing, external title links, and keyboard/mobile navigation; its mobile
+dashboard screenshot was visually reviewed. The run logged a destination-stream
+closure during navigation but completed all assertions and browser-error checks.
+Unit tests, typechecking, and production build were not repeated for this removal.
+No provider/database changes or deployment were performed. The local development
+server was restarted and `Invoke-WebRequest http://localhost:3000` returned 200.

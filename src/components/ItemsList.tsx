@@ -16,6 +16,7 @@ import { reportError } from "@/lib/errors";
 import StatusSelect from "@/components/StatusSelect";
 import DeleteButton from "@/components/DeleteButton";
 import DeadlineBadge from "@/components/DeadlineBadge";
+import ItemTitleLink from "@/components/ItemTitleLink";
 import { getViewerToday } from "@/lib/viewer-date";
 import { KIND_ICON } from "@/components/icons";
 import { PAGE_MEASURE } from "@/lib/layout";
@@ -409,17 +410,10 @@ export default async function ItemsList({ kind, searchParams }: Props) {
                   style={{ borderBottom: "1px solid var(--border-soft)" }}
                 >
                   <div className="min-w-0">
-                    {/* The title opens the item, as it does on the dashboard.
-                        It used to open the external page instead, so the same
-                        looking link did two different things. The external
-                        page has its own "Open" action below. */}
-                    <Link
-                      href={`/items/${item.id}/edit`}
-                      className="font-serif block truncate text-[19px] font-semibold hover:underline"
-                      style={{ color: "var(--ink)" }}
-                    >
-                      {item.title}
-                    </Link>
+                    <ItemTitleLink
+                      item={item}
+                      className="font-serif block truncate text-[19px] font-semibold"
+                    />
                     {item.notes && (
                       <div
                         className="font-serif mt-1 truncate text-[13px] italic"
