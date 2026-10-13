@@ -138,3 +138,24 @@ browser checks were not repeated for this documentation-only change.
 
 Provider/database verification: not run. Deployment: not performed. CI descriptions
 reflect workflow configuration, not a new observed hosted CI result.
+
+## Neutral light backgrounds - 2026-10-12
+
+Implementation: local working tree based on `ea230d4`, initially clean. Updated
+the light-theme surface, border, neutral badge, disabled, and skeleton tokens in
+`src/app/globals.css` from cream to off-white and warm gray.
+
+Local verification on Windows, Node.js 24.18.0: `npm.cmd run lint` and
+`git diff --check` passed. Ran `npm.cmd run test:auth-browser` with
+`TRACKLY_SCREENSHOTS=1` using isolated local Auth/Storage/data fixtures. Keyboard
+and mobile navigation, undo pending/error/retry workflows, exports, conflicting
+edits, and empty states passed before the suite stopped at
+`scripts/helpers/check-items-browser.mjs:430`, expecting one "In 3 days" label
+and finding zero. The same assertion failed on a network-enabled retry and with
+`TZ=UTC`; the full suite did not pass. The first run also reported Google Fonts
+download failures and used fallback fonts. Visually reviewed the generated
+desktop empty-archive and mobile dashboard screenshots. Typechecking, unit tests,
+and production build were not run for this CSS-only change.
+
+Provider/database verification: not run; browser checks used disposable local
+fixtures. Deployment: not performed.

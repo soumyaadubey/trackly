@@ -2,13 +2,13 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --page:#f3f0e0;
-  --panel:#ece8d5;
-  --paper:#fdfbef;
-  --paper-line:#f3efdd;
-  --border:#dbd5bb;
-  --border-soft:#eae5d0;
-  --input-border:#e2dcc4;
+  --page:#f5f5f2;
+  --panel:#eeeee9;
+  --paper:#fdfdfb;
+  --paper-line:#f3f3ef;
+  --border:#d9d9d0;
+  --border-soft:#e8e8e1;
+  --input-border:#deded5;
   --ink:#26241b;
   /* Every text color here meets WCAG AA (4.5:1) on page, panel, paper and
      hovered rows. faint and faintest are now the same: below this they stop
@@ -42,11 +42,11 @@
   --status-applied-fg:#256054;
   --status-interview-bg:#f2ecd6;
   --status-interview-fg:#7d6116;
-  --status-neutral-bg:#ece8d5;
+  --status-neutral-bg:#eeeee9;
   --status-neutral-fg:#605b4a;
 
-  --disabled-bg:#ccc6ae;
-  --skeleton:#efe9d4;
+  --disabled-bg:#ccccc2;
+  --skeleton:#eaeae4;
 }
 
 .dark {
